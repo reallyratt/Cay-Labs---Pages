@@ -1,0 +1,44 @@
+{
+  "short_name": "Pages",
+  "name": "Pages - Notes & Thought Organisers",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FAF9F6",
+  "theme_color": "#252422",
+  "display": "standalone",
+  "orientation": "any",
+  "description": "A minimal, elegant dual-view note taking app with offline PWA support, folders, and pinned pages.",
+  "categories": ["productivity", "utilities"],
+  "widgets": [
+    {
+      "name": "Quick Note",
+      "short_name": "QuickNote",
+      "description": "Quickly create a new note in Pages",
+      "tag": "pages-quick-note",
+      "template": "quick_note_template",
+      "ms_ac_template": "widgets/quick-note.json",
+      "data": "widgets/quick-note-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192",
+          "label": "Pages Quick Note Widget"
+        }
+      ]
+    }
+  ]
+}

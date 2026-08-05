@@ -1,0 +1,6 @@
+{
+  "name": "Pages",
+  "description": "A note taking app featuring dual customized mobile and desktop layouts, offline PWA capabilities, folders, pinned pages, archive, dumpster, and rich page management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
