@@ -139,16 +139,16 @@ export const FolderList: React.FC<FolderListProps> = ({
         onClick={() => onSelectFolder(null)}
         className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-colors border cursor-pointer shadow-xs ${
           dragOverFolderId === 'NO_FOLDER'
-            ? 'bg-[#E8E4D9] border-[#2D2A29] ring-2 ring-[#2D2A29]'
+            ? 'bg-[#E8E4D9] dark:bg-[#383432] border-[#2D2A29] dark:border-[#F2EFE9] ring-2 ring-[#2D2A29] dark:ring-[#F2EFE9]'
             : activeFolderId === null
-            ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-            : 'bg-white text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+            ? 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+            : 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#332F2D]'
         }`}
       >
         <div className="flex-1 min-w-0 pr-2">
           <div className="flex items-center justify-between gap-1.5">
             <span className="text-xs font-semibold truncate">Uncategorized</span>
-            <span className="text-[11px] font-semibold shrink-0 ml-2 text-[#8C8679]">
+            <span className="text-[11px] font-semibold shrink-0 ml-2 text-[#8C8679] dark:text-[#A8A29A]">
               {noFolderCount}
             </span>
           </div>
@@ -167,14 +167,14 @@ export const FolderList: React.FC<FolderListProps> = ({
             exit={{ opacity: 0, y: -12, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 450, damping: 30 }}
             onSubmit={handleSaveNewFolder}
-            className="bg-white border border-[#2D2A29] rounded-xl p-3 shadow-md space-y-2 relative my-2 overflow-hidden"
+            className="bg-white dark:bg-[#282524] border border-[#2D2A29] dark:border-[#8C8679] rounded-xl p-3 shadow-md space-y-2 relative my-2 overflow-hidden"
           >
             {/* Top Left: X Button */}
             <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="p-1 text-[#8C8679] hover:text-[#2D2A29] hover:bg-[#F1EDE4] rounded-lg transition-colors cursor-pointer"
+                className="p-1 text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] hover:bg-[#F1EDE4] dark:hover:bg-[#332F2D] rounded-lg transition-colors cursor-pointer"
                 title="Cancel"
               >
                 <X className="w-4 h-4" />
@@ -189,14 +189,14 @@ export const FolderList: React.FC<FolderListProps> = ({
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Name"
                 autoFocus
-                className="w-full text-xs font-bold text-[#2D2A29] bg-[#F9F7F2] border border-[#E8E4D9] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29]"
+                className="w-full text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9] bg-[#F9F7F2] dark:bg-[#1C1A19] border border-[#E8E4D9] dark:border-[#383432] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29] dark:focus:ring-[#F2EFE9]"
               />
               <textarea
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Description"
                 rows={newDescription ? 2 : 1}
-                className="w-full text-xs text-[#2D2A29] bg-[#F9F7F2] border border-[#E8E4D9] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29] resize-none"
+                className="w-full text-xs text-[#2D2A29] dark:text-[#F2EFE9] bg-[#F9F7F2] dark:bg-[#1C1A19] border border-[#E8E4D9] dark:border-[#383432] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29] dark:focus:ring-[#F2EFE9] resize-none"
               />
             </div>
 
@@ -205,7 +205,7 @@ export const FolderList: React.FC<FolderListProps> = ({
               <button
                 type="submit"
                 disabled={!newTitle.trim()}
-                className="p-1 text-[#2D2A29] hover:text-[#433F3E] disabled:opacity-30 transition-colors flex items-center justify-center cursor-pointer"
+                className="p-1 text-[#2D2A29] dark:text-[#F2EFE9] hover:text-[#433F3E] dark:hover:text-[#E6E0D4] disabled:opacity-30 transition-colors flex items-center justify-center cursor-pointer"
                 title="Save Folder"
               >
                 <Check className="w-5 h-5 stroke-[2.5]" />
@@ -236,14 +236,14 @@ export const FolderList: React.FC<FolderListProps> = ({
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ type: 'spring', stiffness: 450, damping: 30 }}
                   onSubmit={(e) => handleSaveEditFolder(folder, e)}
-                  className="bg-white border-2 border-[#2D2A29] rounded-xl p-3 shadow-md space-y-2 relative overflow-hidden my-2"
+                  className="bg-white dark:bg-[#282524] border-2 border-[#2D2A29] dark:border-[#8C8679] rounded-xl p-3 shadow-md space-y-2 relative overflow-hidden my-2"
                 >
                   {/* Top Left: X Button */}
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
                       onClick={() => setEditingFolderId(null)}
-                      className="p-1 text-[#8C8679] hover:text-[#2D2A29] hover:bg-[#F1EDE4] rounded-lg transition-colors cursor-pointer"
+                      className="p-1 text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] hover:bg-[#F1EDE4] dark:hover:bg-[#332F2D] rounded-lg transition-colors cursor-pointer"
                       title="Cancel edit"
                     >
                       <X className="w-4 h-4" />
@@ -258,14 +258,14 @@ export const FolderList: React.FC<FolderListProps> = ({
                       onChange={(e) => setEditTitle(e.target.value)}
                       placeholder="Name"
                       autoFocus
-                      className="w-full text-xs font-bold text-[#2D2A29] bg-[#F9F7F2] border border-[#E8E4D9] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29]"
+                      className="w-full text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9] bg-[#F9F7F2] dark:bg-[#1C1A19] border border-[#E8E4D9] dark:border-[#383432] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29] dark:focus:ring-[#F2EFE9]"
                     />
                     <textarea
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       placeholder="Description"
                       rows={editDescription ? 2 : 1}
-                      className="w-full text-xs text-[#2D2A29] bg-[#F9F7F2] border border-[#E8E4D9] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29] resize-none"
+                      className="w-full text-xs text-[#2D2A29] dark:text-[#F2EFE9] bg-[#F9F7F2] dark:bg-[#1C1A19] border border-[#E8E4D9] dark:border-[#383432] rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#2D2A29] dark:focus:ring-[#F2EFE9] resize-none"
                     />
                   </div>
 
@@ -274,7 +274,7 @@ export const FolderList: React.FC<FolderListProps> = ({
                     <button
                       type="submit"
                       disabled={!editTitle.trim()}
-                      className="p-1 text-[#2D2A29] hover:text-[#433F3E] disabled:opacity-30 transition-colors flex items-center justify-center cursor-pointer"
+                      className="p-1 text-[#2D2A29] dark:text-[#F2EFE9] hover:text-[#433F3E] dark:hover:text-[#E6E0D4] disabled:opacity-30 transition-colors flex items-center justify-center cursor-pointer"
                       title="Save Changes"
                     >
                       <Check className="w-5 h-5 stroke-[2.5]" />
@@ -305,24 +305,24 @@ export const FolderList: React.FC<FolderListProps> = ({
                 }}
                 className={`group relative w-full px-4 py-3 rounded-xl flex items-start justify-between transition-colors border cursor-pointer shadow-xs ${
                   isDragOverThis
-                    ? 'bg-[#E8E4D9] border-[#2D2A29] ring-2 ring-[#2D2A29]'
+                    ? 'bg-[#E8E4D9] dark:bg-[#383432] border-[#2D2A29] dark:border-[#F2EFE9] ring-2 ring-[#2D2A29] dark:ring-[#F2EFE9]'
                     : isChecked
-                    ? 'bg-[#F1EDE4] border-[#2D2A29] ring-1 ring-[#2D2A29]'
+                    ? 'bg-[#F1EDE4] dark:bg-[#383432] border-[#2D2A29] dark:border-[#F2EFE9] ring-1 ring-[#2D2A29] dark:ring-[#F2EFE9]'
                     : isSelected && !isFolderSelectMode
-                    ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                    : 'bg-white text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                    ? 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                    : 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#332F2D]'
                 }`}
               >
                 {/* Folder Details */}
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center justify-between gap-1.5">
                     <span className="text-xs font-bold truncate">{folder.name}</span>
-                    <span className="text-[11px] font-semibold shrink-0 ml-2 text-[#8C8679]">
+                    <span className="text-[11px] font-semibold shrink-0 ml-2 text-[#8C8679] dark:text-[#A8A29A]">
                       {noteCount}
                     </span>
                   </div>
                   {folder.description && (
-                    <p className="text-xs mt-1 line-clamp-2 leading-snug font-normal text-[#8C8679]">
+                    <p className="text-xs mt-1 line-clamp-2 leading-snug font-normal text-[#8C8679] dark:text-[#A8A29A]">
                       {folder.description}
                     </p>
                   )}
@@ -341,12 +341,12 @@ export const FolderList: React.FC<FolderListProps> = ({
                     disabled={isCreating}
                     className={`w-5 h-5 rounded-full border transition-all duration-150 flex items-center justify-center ${
                       isChecked
-                        ? 'bg-[#2D2A29] border-[#2D2A29] text-white scale-105'
+                        ? 'bg-[#2D2A29] dark:bg-[#F2EFE9] border-[#2D2A29] dark:border-[#F2EFE9] text-white dark:text-[#191716] scale-105'
                         : isFolderSelectMode
-                        ? 'border-[#8C8679] bg-white text-transparent hover:border-[#2D2A29]'
+                        ? 'border-[#8C8679] bg-white dark:bg-[#282524] text-transparent hover:border-[#2D2A29] dark:hover:border-[#F2EFE9]'
                         : isCreating
                         ? 'opacity-0 pointer-events-none'
-                        : 'border-[#8C8679] bg-white text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29]'
+                        : 'border-[#8C8679] bg-white dark:bg-[#282524] text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29] dark:hover:border-[#F2EFE9]'
                     }`}
                     title={isChecked ? 'Deselect folder' : 'Select folder'}
                   >

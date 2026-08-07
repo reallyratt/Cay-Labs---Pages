@@ -39,16 +39,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             exit={{ opacity: 0, scale: 0.94, y: 10 }}
             transition={{ type: 'spring', stiffness: 450, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#F9F7F2] border border-[#E8E4D9] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative text-[#2D2A29] space-y-4"
+            className="bg-[#F9F7F2] dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative text-[#2D2A29] dark:text-[#F2EFE9] space-y-4"
           >
-            <h3 className="text-base font-bold tracking-tight text-[#2D2A29]">{title}</h3>
-            <p className="text-xs text-[#8C8679] leading-relaxed">{description}</p>
+            <h3 className="text-base font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9]">{title}</h3>
+            <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] leading-relaxed">{description}</p>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8E4D9]">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8E4D9] dark:border-[#383432]">
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-xs font-semibold text-[#8C8679] hover:text-[#2D2A29] rounded-xl transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -58,7 +58,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors shadow-sm text-white cursor-pointer ${
                   confirmVariant === 'danger'
                     ? 'bg-[#D90429] hover:bg-[#B00020]'
-                    : 'bg-[#2D2A29] hover:bg-[#433F3E]'
+                    : 'bg-[#2D2A29] dark:bg-[#F2EFE9] text-white dark:text-[#191716] hover:bg-[#433F3E] dark:hover:bg-[#E6E0D4]'
                 }`}
               >
                 {confirmLabel}

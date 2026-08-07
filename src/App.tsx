@@ -20,6 +20,89 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [isWindowMobile, setIsWindowMobile] = useState<boolean>(false);
 
+  // Screen Mode state
+  const [screenMode, setScreenMode] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('pages_screen_mode') as 'light' | 'dark' | 'system') || 'light';
+  });
+
+  // Font state
+  const [selectedFont, setSelectedFont] = useState<'geist' | 'monospace' | 'system'>(() => {
+    return (localStorage.getItem('pages_font_option') as 'geist' | 'monospace' | 'system') || 'geist';
+  });
+
+  // Font Scope state: 'all' (Fully Implemented) or 'editor' (Note Content Only)
+  const [fontScope, setFontScope] = useState<'all' | 'editor'>(() => {
+    return (localStorage.getItem('pages_font_scope') as 'all' | 'editor') || 'all';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('pages_screen_mode', screenMode);
+    const applyTheme = () => {
+      if (screenMode === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else if (screenMode === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    };
+    applyTheme();
+
+    if (screenMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => applyTheme();
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [screenMode]);
+
+  useEffect(() => {
+    localStorage.setItem('pages_font_option', selectedFont);
+    localStorage.setItem('pages_font_scope', fontScope);
+
+    const fontMap = {
+      geist: 'var(--font-geist)',
+      monospace: 'var(--font-mono)',
+      system: 'var(--font-system)',
+    };
+
+    const chosenFont = fontMap[selectedFont] || fontMap.geist;
+
+    if (fontScope === 'all') {
+      document.documentElement.style.setProperty('--app-font-family', chosenFont);
+      document.documentElement.style.setProperty('--editor-font-family', chosenFont);
+    } else {
+      // Note Content Only: keep main app UI in default Geist/Sans font, apply chosen font to editor only
+      document.documentElement.style.setProperty('--app-font-family', 'var(--font-geist)');
+      document.documentElement.style.setProperty('--editor-font-family', chosenFont);
+    }
+  }, [selectedFont, fontScope]);
+
+  useEffect(() => {
+    const handleCopy = (e: ClipboardEvent) => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const anchorNode = selection.anchorNode;
+      if (!anchorNode) return;
+
+      const element = anchorNode.nodeType === Node.ELEMENT_NODE
+        ? (anchorNode as Element)
+        : anchorNode.parentElement;
+
+      if (!element || !element.closest('.note-editor-editable, .note-title-input, .content-area-wrapper')) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('copy', handleCopy);
+    return () => document.removeEventListener('copy', handleCopy);
+  }, []);
+
   // Multi-select state
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
   const [prevSelectedNoteIds, setPrevSelectedNoteIds] = useState<string[] | null>(null);
@@ -362,6 +445,12 @@ export default function App() {
             onClose={() => setActiveModal(null)}
             viewMode={viewMode}
             setViewMode={setViewMode}
+            screenMode={screenMode}
+            setScreenMode={setScreenMode}
+            selectedFont={selectedFont}
+            setSelectedFont={setSelectedFont}
+            fontScope={fontScope}
+            setFontScope={setFontScope}
             pwaState={pwaState}
             onTriggerInstall={triggerInstall}
             notes={notes}
@@ -400,6 +489,12 @@ export default function App() {
           onCloseTab={() => setActiveModal(null)}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          screenMode={screenMode}
+          setScreenMode={setScreenMode}
+          selectedFont={selectedFont}
+          setSelectedFont={setSelectedFont}
+          fontScope={fontScope}
+          setFontScope={setFontScope}
           pwaState={pwaState}
           onTriggerInstall={triggerInstall}
           onImportNotes={handleImportNotes}

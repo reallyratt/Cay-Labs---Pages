@@ -101,7 +101,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
     unpinnedNotes.every((n) => selectedNoteIds.includes(n.id));
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F9F7F2] pb-28 select-none sm:select-text">
+    <div className="min-h-screen flex flex-col bg-[#F9F7F2] dark:bg-[#191716] text-[#2D2A29] dark:text-[#F2EFE9] pb-28 select-none sm:select-text">
       {/* Mobile Top Header */}
       <Header
         onOpenSection={onOpenSection}
@@ -122,15 +122,15 @@ export const MobileView: React.FC<MobileViewProps> = ({
             {/* FOLDERS SECTION */}
             <div>
               <div className="flex items-center justify-between mb-2.5 px-1 text-left">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] text-left">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] dark:text-[#F2EFE9] text-left">
                   Folders
                 </h2>
-                <span className="text-[11px] font-semibold text-[#8C8679]">
+                <span className="text-[11px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                   {matchingFolders.length}
                 </span>
               </div>
               {matchingFolders.length === 0 ? (
-                <p className="text-xs text-[#8C8679] px-1 py-2">No matching folders</p>
+                <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] px-1 py-2">No matching folders</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {matchingFolders.map((folder) => (
@@ -140,15 +140,15 @@ export const MobileView: React.FC<MobileViewProps> = ({
                         if (onSelectFolder) onSelectFolder(folder.id);
                         setSearchQuery('');
                       }}
-                      className="p-3 bg-white border border-[#E8E4D9] rounded-xl flex items-center justify-between active:scale-[0.98] transition-transform shadow-xs"
+                      className="p-3 bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] rounded-xl flex items-center justify-between active:scale-[0.98] transition-transform shadow-xs"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-[#F1EDE4] flex items-center justify-center text-[#2D2A29]">
+                        <div className="w-8 h-8 rounded-lg bg-[#F1EDE4] dark:bg-[#332F2D] flex items-center justify-center text-[#2D2A29] dark:text-[#F2EFE9]">
                           <FolderIcon className="w-4 h-4" />
                         </div>
-                        <span className="text-sm font-bold text-[#2D2A29]">{folder.name}</span>
+                        <span className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9]">{folder.name}</span>
                       </div>
-                      <span className="text-xs text-[#8C8679]">
+                      <span className="text-xs text-[#8C8679] dark:text-[#A8A29A]">
                         {activeNotes.filter((n) => n.folderId === folder.id).length} pages
                       </span>
                     </div>
@@ -160,15 +160,15 @@ export const MobileView: React.FC<MobileViewProps> = ({
             {/* PAGES SECTION */}
             <div>
               <div className="flex items-center justify-between mb-2.5 px-1 text-left">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] text-left">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] dark:text-[#F2EFE9] text-left">
                   Pages
                 </h2>
-                <span className="text-[11px] font-semibold text-[#8C8679]">
+                <span className="text-[11px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                   {matchingSearchNotes.length}
                 </span>
               </div>
               {matchingSearchNotes.length === 0 ? (
-                <p className="text-xs text-[#8C8679] px-1 py-2">No matching pages</p>
+                <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] px-1 py-2">No matching pages</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   <AnimatePresence mode="popLayout">
@@ -203,12 +203,12 @@ export const MobileView: React.FC<MobileViewProps> = ({
             </div>
           </div>
         ) : filteredNotes.length === 0 ? (
-          <div className="text-center py-16 text-[#8C8679]">
-            <p className="text-base font-semibold text-[#2D2A29] mb-1">No pages found</p>
+          <div className="text-center py-16 text-[#8C8679] dark:text-[#A8A29A]">
+            <p className="text-base font-semibold text-[#2D2A29] dark:text-[#F2EFE9] mb-1">No pages found</p>
             <p className="text-xs mb-4">Tap the + button below to create your first page.</p>
             <button
               onClick={onCreateNewPage}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D2A29] text-[#F9F7F2] text-xs font-semibold rounded-xl hover:bg-[#433F3E] transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D2A29] dark:bg-[#F2EFE9] text-[#F9F7F2] dark:text-[#191716] text-xs font-semibold rounded-xl hover:bg-[#433F3E] dark:hover:bg-[#E6E0D4] transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Create New Page</span>
@@ -220,10 +220,10 @@ export const MobileView: React.FC<MobileViewProps> = ({
             {pinnedNotes.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29]">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] dark:text-[#F2EFE9]">
                     Pinned
                   </h2>
-                  <span className="text-[11px] font-semibold text-[#8C8679]">
+                  <span className="text-[11px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                     {pinnedNotes.length}
                   </span>
                 </div>
@@ -260,10 +260,10 @@ export const MobileView: React.FC<MobileViewProps> = ({
             {/* Category: Everything */}
             <div>
               <div className="flex items-center justify-between mb-2.5">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[#433F3E]">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4]">
                   Everything
                 </h2>
-                <span className="text-[11px] font-semibold text-[#8C8679]">
+                <span className="text-[11px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                   {unpinnedNotes.length}
                 </span>
               </div>
@@ -311,7 +311,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
           isDesktop={false}
         />
       ) : (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[#2D2A29] text-[#F9F7F2] rounded-full px-5 py-2.5 shadow-2xl flex items-center gap-8 border border-[#433F3E]">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[#2D2A29] dark:bg-[#242120] text-[#F9F7F2] dark:text-[#F2EFE9] rounded-full px-5 py-2.5 shadow-2xl flex items-center gap-8 border border-[#433F3E] dark:border-[#3D3836]">
           {/* Left: Plus Icon (Create Note) */}
           <button
             onClick={onCreateNewPage}

@@ -62,6 +62,27 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
   const folderDropdownRef = useRef<HTMLDivElement>(null);
+  const titleTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustTitleHeight = () => {
+    if (titleTextareaRef.current) {
+      titleTextareaRef.current.style.height = 'auto';
+      const scrollH = titleTextareaRef.current.scrollHeight;
+      titleTextareaRef.current.style.height = `${Math.max(52, scrollH)}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustTitleHeight();
+    const handle = requestAnimationFrame(() => {
+      adjustTitleHeight();
+    });
+    window.addEventListener('resize', adjustTitleHeight);
+    return () => {
+      cancelAnimationFrame(handle);
+      window.removeEventListener('resize', adjustTitleHeight);
+    };
+  }, [title, note?.id]);
 
   // Floating Bar States
   const [activeCategory, setActiveCategory] = useState<'size' | 'style' | 'list' | 'align' | 'attach'>('style');
@@ -474,17 +495,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   if (!note) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[#8C8679] bg-[#F9F7F2]">
-        <div className="w-16 h-16 rounded-2xl bg-[#F1EDE4] flex items-center justify-center mb-4 text-[#433F3E]">
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[#8C8679] dark:text-[#A8A29A] bg-[#F9F7F2] dark:bg-[#191716]">
+        <div className="w-16 h-16 rounded-2xl bg-[#F1EDE4] dark:bg-[#282524] flex items-center justify-center mb-4 text-[#433F3E] dark:text-[#E6E0D4]">
           <FolderIcon className="w-8 h-8 stroke-1" />
         </div>
-        <h3 className="text-lg font-bold text-[#2D2A29] mb-1">Select or Create a Page</h3>
+        <h3 className="text-lg font-bold text-[#2D2A29] dark:text-[#F2EFE9] mb-1">Select or Create a Page</h3>
         <p className="text-sm max-w-sm">Choose a page from the directory on the left or tap New Page to start writing.</p>
       </div>
     );
   }
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setTitle(val);
     triggerAutoSave(val, content, folderId);
@@ -539,21 +560,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     .join(' ');
 
   return (
-    <div className="h-full flex flex-col bg-[#F9F7F2] text-[#2D2A29] relative overflow-hidden">
+    <div className="h-full flex flex-col bg-[#F9F7F2] dark:bg-[#191716] text-[#2D2A29] dark:text-[#F2EFE9] relative overflow-hidden">
       {/* Editor Body - Clicking anywhere in editor closes category dropup or focuses text */}
       <div
         onClick={handleContainerClick}
         className="flex-1 overflow-y-auto p-6 sm:p-12 max-w-3xl w-full mx-auto flex flex-col gap-6 pb-[80vh]"
       >
         {/* Note Top Metadata & Action Bar */}
-        <div className="flex items-center justify-between gap-4 text-xs text-[#8C8679] select-none pt-2 sm:pt-0">
+        <div className="flex items-center justify-between gap-3 sm:gap-4 text-xs text-[#8C8679] dark:text-[#A8A29A] select-none pt-2 sm:pt-0">
           {/* Left Side: Mobile Back, Pin Icon, Folder Icon + Folder Name */}
-          <div className="flex items-center gap-3.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 shrink">
             {isMobileView && onCloseMobile && (
               <button
                 type="button"
                 onClick={onCloseMobile}
-                className="p-1 -ml-1 text-[#433F3E] hover:bg-[#E8E4D9]/60 rounded-lg transition-colors focus:outline-none cursor-pointer"
+                className="p-1 -ml-1 text-[#433F3E] dark:text-[#E6E0D4] hover:bg-[#E8E4D9]/60 dark:hover:bg-[#383432]/60 rounded-lg transition-colors focus:outline-none cursor-pointer shrink-0"
                 title="Back to list"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -565,29 +586,29 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               <button
                 type="button"
                 onClick={() => onTogglePin(note.id)}
-                className={`p-1 rounded-md transition-colors focus:outline-none cursor-pointer ${
+                className={`p-1 rounded-md transition-colors focus:outline-none cursor-pointer shrink-0 ${
                   note.isPinned
-                    ? 'text-[#2D2A29]'
-                    : 'text-[#8C8679] hover:text-[#2D2A29]'
+                    ? 'text-[#2D2A29] dark:text-[#F2EFE9]'
+                    : 'text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9]'
                 }`}
                 title={note.isPinned ? 'Unpin page' : 'Pin page'}
               >
-                <Pin className={`w-4 h-4 ${note.isPinned ? 'fill-current text-[#2D2A29]' : ''}`} />
+                <Pin className={`w-4 h-4 ${note.isPinned ? 'fill-current text-[#2D2A29] dark:text-[#F2EFE9]' : ''}`} />
               </button>
             )}
 
             {/* Folder Icon & Name */}
-            <div className="relative flex items-center" ref={folderDropdownRef}>
+            <div className="relative flex items-center min-w-0 max-w-[140px] sm:max-w-[220px]" ref={folderDropdownRef}>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsFolderDropdownOpen((prev) => !prev);
                 }}
-                className="flex items-center gap-1.5 p-1 rounded-md text-[#8C8679] hover:text-[#2D2A29] hover:bg-[#E8E4D9]/50 transition-colors cursor-pointer select-none focus:outline-none"
+                className="flex items-center gap-1.5 p-1 rounded-md text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] hover:bg-[#E8E4D9]/50 dark:hover:bg-[#383432]/50 transition-colors cursor-pointer select-none focus:outline-none min-w-0 max-w-full"
                 title="Change folder"
               >
-                <FolderIcon className="w-4 h-4 shrink-0 text-[#8C8679]" />
+                <FolderIcon className="w-4 h-4 shrink-0 text-[#8C8679] dark:text-[#A8A29A]" />
                 <AnimatePresence mode="wait">
                   {currentFolder && (
                     <motion.span
@@ -596,13 +617,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                       animate={{ opacity: 1, x: 0, width: 'auto' }}
                       exit={{ opacity: 0, x: -10, width: 0 }}
                       transition={{ duration: 0.25, ease: 'easeOut' }}
-                      className="font-semibold text-[#2D2A29] truncate max-w-[180px] inline-block whitespace-nowrap overflow-hidden text-xs"
+                      className="font-semibold text-[#2D2A29] dark:text-[#F2EFE9] truncate text-xs min-w-0"
                     >
-                      {currentFolder.name}
+                      {currentFolder.name.length > 20
+                        ? `${currentFolder.name.slice(0, 20)}...`
+                        : currentFolder.name}
                     </motion.span>
                   )}
                 </AnimatePresence>
-                <ChevronDown className={`w-3.5 h-3.5 text-[#8C8679] transition-transform duration-200 ${isFolderDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[#8C8679] dark:text-[#A8A29A] transition-transform duration-200 ${isFolderDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -612,9 +635,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="absolute left-0 top-full mt-1.5 w-48 bg-white/95 backdrop-blur-md rounded-xl border border-[#E8E4D9] shadow-lg py-1.5 z-50 overflow-hidden"
+                    className="absolute left-0 top-full mt-1.5 w-48 bg-white/95 dark:bg-[#282524]/95 backdrop-blur-md rounded-xl border border-[#E8E4D9] dark:border-[#383432] shadow-lg py-1.5 z-50 overflow-hidden"
                   >
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#8C8679] px-3 py-1.5 select-none">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#8C8679] dark:text-[#A8A29A] px-3 py-1.5 select-none">
                       Select Folder
                     </div>
                     <button
@@ -624,12 +647,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                         triggerAutoSave(title, content, null);
                         setIsFolderDropdownOpen(false);
                       }}
-                      className={`w-full px-3 py-2 text-xs text-left flex items-center justify-between hover:bg-[#F1EDE4] transition-colors cursor-pointer ${
-                        !folderId ? 'font-bold text-[#2D2A29] bg-[#F1EDE4]/60' : 'text-[#433F3E]'
+                      className={`w-full px-3 py-2 text-xs text-left flex items-center justify-between hover:bg-[#F1EDE4] dark:hover:bg-[#332F2D] transition-colors cursor-pointer ${
+                        !folderId ? 'font-bold text-[#2D2A29] dark:text-[#F2EFE9] bg-[#F1EDE4]/60 dark:bg-[#332F2D]/60' : 'text-[#433F3E] dark:text-[#E6E0D4]'
                       }`}
                     >
                       <span>No Folder</span>
-                      {!folderId && <Check className="w-3.5 h-3.5 text-[#2D2A29]" />}
+                      {!folderId && <Check className="w-3.5 h-3.5 text-[#2D2A29] dark:text-[#F2EFE9]" />}
                     </button>
                     {folders.map((f) => (
                       <button
@@ -640,12 +663,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                           triggerAutoSave(title, content, f.id);
                           setIsFolderDropdownOpen(false);
                         }}
-                        className={`w-full px-3 py-2 text-xs text-left flex items-center justify-between hover:bg-[#F1EDE4] transition-colors cursor-pointer ${
-                          folderId === f.id ? 'font-bold text-[#2D2A29] bg-[#F1EDE4]/60' : 'text-[#433F3E]'
+                        className={`w-full px-3 py-2 text-xs text-left flex items-center justify-between hover:bg-[#F1EDE4] dark:hover:bg-[#332F2D] transition-colors cursor-pointer ${
+                          folderId === f.id ? 'font-bold text-[#2D2A29] dark:text-[#F2EFE9] bg-[#F1EDE4]/60 dark:bg-[#332F2D]/60' : 'text-[#433F3E] dark:text-[#E6E0D4]'
                         }`}
                       >
                         <span className="truncate">{f.name}</span>
-                        {folderId === f.id && <Check className="w-3.5 h-3.5 text-[#2D2A29]" />}
+                        {folderId === f.id && <Check className="w-3.5 h-3.5 text-[#2D2A29] dark:text-[#F2EFE9]" />}
                       </button>
                     ))}
                   </motion.div>
@@ -655,27 +678,31 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           </div>
 
           {/* Right Side: Updated timestamp & Word/Character count */}
-          <div className="flex items-center gap-2 shrink-0 text-[#8C8679] font-medium text-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-[#8C8679] dark:text-[#A8A29A] font-medium text-xs whitespace-nowrap ml-auto">
             <span>{formatTimeAgo(note.updatedAt)}</span>
             <span>•</span>
             <span>
               {wordCount} {wordCount === 1 ? 'word' : 'words'}
             </span>
-            <span>•</span>
-            <span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">
               {charCount} {charCount === 1 ? 'character' : 'characters'}
             </span>
           </div>
         </div>
 
         {/* Title Input */}
-        <input
-          type="text"
+        <textarea
+          ref={titleTextareaRef}
           value={title}
-          onChange={handleTitleChange}
+          onChange={(e) => {
+            handleTitleChange(e);
+            adjustTitleHeight();
+          }}
           onFocus={() => setIsCategoryMenuOpen(false)}
           placeholder="New Page"
-          className="w-full text-3xl sm:text-4xl font-bold text-[#2D2A29] placeholder-[#E8E4D9] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 tracking-tight"
+          rows={1}
+          className="w-full text-3xl sm:text-4xl font-bold text-[#2D2A29] dark:text-[#F2EFE9] placeholder-[#E8E4D9] dark:placeholder-[#433F3E] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 tracking-tight note-title-input resize-none overflow-hidden leading-tight block"
         />
 
         {/* Content Editable Area */}
@@ -691,7 +718,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             onKeyDown={handleKeyDown}
             onFocus={() => setIsCategoryMenuOpen(false)}
             data-placeholder="Start writing..."
-            className="w-full h-full min-h-[60vh] text-[#433F3E] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 resize-none leading-relaxed font-sans outline-none note-editor-editable pb-32"
+            className="w-full h-full min-h-[60vh] text-[#433F3E] dark:text-[#E6E0D4] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 resize-none leading-relaxed font-sans outline-none note-editor-editable pb-32"
           />
         </div>
       </div>

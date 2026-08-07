@@ -168,21 +168,21 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           isDragging
             ? 'opacity-30 scale-90 -translate-y-1 border-dashed border-[#8C8679] shadow-lg ring-2 ring-[#8C8679]/30'
             : isSelectMode && isChecked
-            ? 'bg-[#F1EDE4] border-[#2D2A29] ring-1 ring-[#2D2A29]'
+            ? 'bg-[#F1EDE4] dark:bg-[#383432] border-[#2D2A29] dark:border-[#F2EFE9] ring-1 ring-[#2D2A29] dark:ring-[#F2EFE9]'
             : isSelected && !isSelectMode
-            ? 'bg-white border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-sm'
-            : 'bg-white border-[#E8E4D9] hover:border-[#8C8679]/40 hover:shadow-sm'
+            ? 'bg-white dark:bg-[#282524] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-sm'
+            : 'bg-white dark:bg-[#282524] border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679]/40 hover:shadow-sm'
         }`}
       >
         {/* Content Preview Container */}
         <div className="min-w-0 flex-1 space-y-1">
           {/* Note Title */}
-          <h3 className="text-sm font-bold text-[#2D2A29] truncate group-hover:text-[#8C8679] transition-colors">
+          <h3 className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9] line-clamp-3 break-words whitespace-pre-wrap group-hover:text-[#8C8679] dark:group-hover:text-[#A8A29A] transition-colors leading-snug">
             {note.title.trim() || 'Untitled Page'}
           </h3>
 
           {/* Text preview up to 2 lines */}
-          <p className="text-xs text-[#8C8679] line-clamp-2 font-normal leading-snug">
+          <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] line-clamp-2 font-normal leading-snug">
             {note.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || 'No additional content'}
           </p>
         </div>
@@ -198,8 +198,8 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               }}
               className={`w-5 h-5 rounded-full border transition-all duration-150 flex items-center justify-center ${
                 isChecked
-                  ? 'bg-[#2D2A29] border-[#2D2A29] text-white scale-105'
-                  : 'border-[#8C8679] bg-white text-transparent hover:border-[#2D2A29]'
+                  ? 'bg-[#2D2A29] dark:bg-[#F2EFE9] border-[#2D2A29] dark:border-[#F2EFE9] text-white dark:text-[#191716] scale-105'
+                  : 'border-[#8C8679] bg-white dark:bg-[#282524] text-transparent hover:border-[#2D2A29] dark:hover:border-[#F2EFE9]'
               }`}
               title={isChecked ? 'Deselect page' : 'Select page'}
             >
@@ -224,7 +224,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
                 e.stopPropagation();
                 onLongPress();
               }}
-              className="w-5 h-5 rounded-full border border-[#8C8679] bg-white text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29] transition-all duration-150 flex items-center justify-center"
+              className="w-5 h-5 rounded-full border border-[#8C8679] bg-white dark:bg-[#282524] text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29] dark:hover:border-[#F2EFE9] transition-all duration-150 flex items-center justify-center"
               title="Select page"
               aria-label="Select page"
             />

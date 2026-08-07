@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] px-4 h-[57px] flex items-center justify-between transition-colors">
+    <header className="sticky top-0 z-40 bg-[#F9F7F2]/95 dark:bg-[#1C1A19]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] px-4 h-[57px] flex items-center justify-between transition-colors">
       {/* Top Left: Main text "Pages" */}
       <div className="flex items-center gap-3">
         <button
@@ -54,11 +54,11 @@ export const Header: React.FC<HeaderProps> = ({
           className="text-left group focus:outline-none cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-[#2D2A29] group-hover:text-[#8C8679] transition-colors">
+            <h1 className="text-2xl font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9] group-hover:text-[#8C8679] dark:group-hover:text-[#A8A29A] transition-colors">
               Pages
             </h1>
             {isOffline && (
-              <span className="flex items-center gap-1 text-[11px] font-medium bg-[#F1EDE4] text-[#8C8679] px-2 py-0.5 rounded-full border border-[#E8E4D9]" title="Working offline">
+              <span className="flex items-center gap-1 text-[11px] font-medium bg-[#F1EDE4] dark:bg-[#2A2725] text-[#8C8679] dark:text-[#A8A29A] px-2 py-0.5 rounded-full border border-[#E8E4D9] dark:border-[#383432]" title="Working offline">
                 <WifiOff className="w-3 h-3" />
                 <span className="hidden sm:inline">Offline</span>
               </span>
@@ -86,16 +86,16 @@ export const Header: React.FC<HeaderProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search..."
                 autoFocus
-                className="w-full text-sm bg-white text-[#2D2A29] placeholder-[#8C8679] pl-8 pr-7 py-1.5 rounded-lg border border-[#E8E4D9] focus:outline-none focus:ring-2 focus:ring-[#8C8679]/30"
+                className="w-full text-sm bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] placeholder-[#8C8679] dark:placeholder-[#A8A29A] pl-8 pr-7 py-1.5 rounded-lg border border-[#E8E4D9] dark:border-[#383432] focus:outline-none focus:ring-2 focus:ring-[#8C8679]/30"
               />
-              <Search className="w-4 h-4 text-[#8C8679] absolute left-2.5 shrink-0 pointer-events-none" />
+              <Search className="w-4 h-4 text-[#8C8679] dark:text-[#A8A29A] absolute left-2.5 shrink-0 pointer-events-none" />
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
                   setIsSearchOpen(false);
                 }}
-                className="absolute right-2 text-[#8C8679] hover:text-[#2D2A29] p-0.5 rounded cursor-pointer"
+                className="absolute right-2 text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] p-0.5 rounded cursor-pointer"
                 title="Close search"
               >
                 <X className="w-4 h-4" />
@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ duration: 0.15 }}
               onClick={() => setIsSearchOpen(true)}
-              className="p-2 text-[#433F3E] hover:bg-[#F1EDE4] rounded-lg transition-colors focus:outline-none cursor-pointer"
+              className="p-2 text-[#433F3E] dark:text-[#E6E0D4] hover:bg-[#F1EDE4] dark:hover:bg-[#2A2725] rounded-lg transition-colors focus:outline-none cursor-pointer"
               title="Search notes"
             >
               <Search className="w-5 h-5" />
@@ -121,8 +121,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen((prev) => !prev)}
-            className={`p-2 text-[#2D2A29] hover:bg-[#F1EDE4] rounded-lg transition-colors focus:outline-none cursor-pointer ${
-              isMenuOpen ? 'bg-[#F1EDE4]' : ''
+            className={`p-2 text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F1EDE4] dark:hover:bg-[#2A2725] rounded-lg transition-colors focus:outline-none cursor-pointer ${
+              isMenuOpen ? 'bg-[#F1EDE4] dark:bg-[#2A2725]' : ''
             }`}
             aria-label="Menu"
             title="Menu"
@@ -139,16 +139,16 @@ export const Header: React.FC<HeaderProps> = ({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: -8 }}
                 transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                className="absolute right-0 mt-2 w-52 bg-white border border-[#E8E4D9] rounded-xl shadow-xl py-1.5 z-50 overflow-hidden"
+                className="absolute right-0 mt-2 w-52 bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] rounded-xl shadow-xl py-1.5 z-50 overflow-hidden"
               >
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     onOpenSection('archive');
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-[#2D2A29] hover:bg-[#F9F7F2] flex items-center gap-3 transition-colors cursor-pointer"
+                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F9F7F2] dark:hover:bg-[#332F2D] flex items-center gap-3 transition-colors cursor-pointer"
                 >
-                  <Archive className="w-4 h-4 text-[#8C8679]" />
+                  <Archive className="w-4 h-4 text-[#8C8679] dark:text-[#A8A29A]" />
                   <span>Archive</span>
                 </button>
 
@@ -157,22 +157,22 @@ export const Header: React.FC<HeaderProps> = ({
                     setIsMenuOpen(false);
                     onOpenSection('dumpster');
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-[#2D2A29] hover:bg-[#F9F7F2] flex items-center gap-3 transition-colors cursor-pointer"
+                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F9F7F2] dark:hover:bg-[#332F2D] flex items-center gap-3 transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-4 h-4 text-[#8C8679]" />
+                  <Trash2 className="w-4 h-4 text-[#8C8679] dark:text-[#A8A29A]" />
                   <span>Dumpster</span>
                 </button>
 
-                <div className="my-1 border-t border-[#E8E4D9]" />
+                <div className="my-1 border-t border-[#E8E4D9] dark:border-[#383432]" />
 
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     onOpenSection('settings');
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-[#2D2A29] hover:bg-[#F9F7F2] flex items-center gap-3 transition-colors cursor-pointer"
+                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F9F7F2] dark:hover:bg-[#332F2D] flex items-center gap-3 transition-colors cursor-pointer"
                 >
-                  <Settings className="w-4 h-4 text-[#8C8679]" />
+                  <Settings className="w-4 h-4 text-[#8C8679] dark:text-[#A8A29A]" />
                   <span>Settings</span>
                 </button>
               </motion.div>

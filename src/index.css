@@ -1,5 +1,68 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --font-geist: 'Geist', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --app-font-family: var(--font-geist);
+  --editor-font-family: var(--font-geist);
+}
+
+html,
+body,
+#root,
+button,
+input,
+textarea,
+select {
+  font-family: var(--app-font-family);
+}
+
+body * {
+  font-family: inherit;
+}
+
+.note-editor-editable,
+.note-editor-editable *,
+.note-title-input {
+  font-family: var(--editor-font-family) !important;
+}
+
+.note-title-input {
+  line-height: 1.35 !important;
+  box-sizing: border-box !important;
+  padding-top: 4px !important;
+  padding-bottom: 8px !important;
+  height: auto;
+  min-height: 52px;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+}
+
+/* Disable text selection by default except on the note editor & title */
+html,
+body,
+#root {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.note-title-input,
+.note-editor-editable,
+.note-editor-editable *,
+.content-area-wrapper {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
 /* Hide scrollbars across all elements while maintaining scrollability */
 * {
   -ms-overflow-style: none; /* IE and Edge */
@@ -36,6 +99,9 @@
   margin-bottom: 0.25rem;
   color: #2D2A29;
 }
+.dark .note-editor-editable h1 {
+  color: #F2EFE9;
+}
 .note-editor-editable h2 {
   font-size: 1.4rem;
   font-weight: 400;
@@ -43,6 +109,9 @@
   margin-top: 0.4rem;
   margin-bottom: 0.25rem;
   color: #2D2A29;
+}
+.dark .note-editor-editable h2 {
+  color: #F2EFE9;
 }
 .note-editor-editable p,
 .note-editor-editable div {
@@ -55,6 +124,9 @@
   line-height: 1.5;
   margin-bottom: 0.25rem;
   color: #5B5653;
+}
+.dark .note-editor-editable h4 {
+  color: #A8A29A;
 }
 .note-editor-editable ul {
   list-style-type: disc;
@@ -131,4 +203,14 @@
   color: #E8E4D9;
   cursor: text;
   pointer-events: none;
+}
+.dark .note-editor-editable[data-placeholder]:empty:before {
+  color: #433F3E;
+}
+
+/* Global Dark Root Background */
+html.dark,
+html.dark body {
+  background-color: #191716;
+  color: #F2EFE9;
 }

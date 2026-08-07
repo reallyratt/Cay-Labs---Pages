@@ -44,7 +44,7 @@ export const SelectModeBar: React.FC<SelectModeBarProps> = ({
         className={`p-3 rounded-full transition-colors duration-200 flex items-center justify-center shadow-xl border ${
           selectedCount > 0
             ? 'bg-[#2D2A29] hover:bg-[#433F3E] text-[#F9F7F2] border-[#433F3E] active:scale-95 shadow-black/10 cursor-pointer'
-            : 'bg-[#E8E4D9] text-[#8C8679] border-[#E8E4D9] cursor-not-allowed opacity-60'
+            : 'bg-[#E8E4D9] dark:bg-[#282524] text-[#8C8679] dark:text-[#8C8679] border-[#E8E4D9] dark:border-[#383432] cursor-not-allowed opacity-60'
         }`}
         title="Archive selected pages"
         aria-label="Archive selected pages"
@@ -102,7 +102,7 @@ export const SelectModeBar: React.FC<SelectModeBarProps> = ({
         className={`p-3 rounded-full transition-colors duration-200 flex items-center justify-center shadow-xl border ${
           selectedCount > 0
             ? 'bg-[#D90429] hover:bg-[#B00020] text-white border-[#D90429] active:scale-95 shadow-red-900/20 cursor-pointer'
-            : 'bg-[#E8E4D9] text-[#8C8679] border-[#E8E4D9] cursor-not-allowed opacity-60'
+            : 'bg-[#E8E4D9] dark:bg-[#282524] text-[#8C8679] dark:text-[#8C8679] border-[#E8E4D9] dark:border-[#383432] cursor-not-allowed opacity-60'
         }`}
         title="Move selected pages to dumpster"
         aria-label="Move selected pages to dumpster"

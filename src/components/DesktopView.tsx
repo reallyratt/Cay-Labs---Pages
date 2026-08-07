@@ -38,6 +38,15 @@ import { FolderList } from './FolderList';
 import { FolderSelectModeBar } from './FolderSelectModeBar';
 import { ConfirmationModal } from './ConfirmationModal';
 import { formatTimeAgo } from '../utils/storage';
+import { exportNotesToZip, importNotesFromFile } from '../utils/backupEngine';
+import {
+  GoogleUser,
+  getStoredGoogleUser,
+  setStoredGoogleUser,
+  performFullAccountSync,
+} from '../utils/googleSyncEngine';
+import { GoogleAuthModal } from './GoogleAuthModal';
+import { RefreshCw, LogOut, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface DesktopViewProps {
   notes: Note[];
@@ -69,6 +78,12 @@ interface DesktopViewProps {
   onCloseTab: () => void;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  screenMode: 'light' | 'dark' | 'system';
+  setScreenMode: (mode: 'light' | 'dark' | 'system') => void;
+  selectedFont: 'geist' | 'monospace' | 'system';
+  setSelectedFont: (font: 'geist' | 'monospace' | 'system') => void;
+  fontScope: 'all' | 'editor';
+  setFontScope: (scope: 'all' | 'editor') => void;
   pwaState: PWAState;
   onTriggerInstall: () => void;
   onImportNotes: (imported: Note[]) => void;
@@ -114,6 +129,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   onCloseTab,
   viewMode,
   setViewMode,
+  screenMode,
+  setScreenMode,
+  selectedFont,
+  setSelectedFont,
+  fontScope,
+  setFontScope,
   pwaState,
   onTriggerInstall,
   onImportNotes,
@@ -159,42 +180,29 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   // Settings category state
   const [settingsCategory, setSettingsCategory] = useState<'looks' | 'data' | 'about'>('looks');
 
-  // Screen Mode state
-  const [screenMode, setScreenMode] = useState<'light' | 'dark' | 'system'>(() => {
-    return (localStorage.getItem('pages_screen_mode') as 'light' | 'dark' | 'system') || 'light';
-  });
-
-  // Font state
-  const [selectedFont, setSelectedFont] = useState<'geist' | 'monospace' | 'system'>(() => {
-    return (localStorage.getItem('pages_font_option') as 'geist' | 'monospace' | 'system') || 'geist';
-  });
+  // Google Sync & Backup state
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(getStoredGoogleUser);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isExportExpanded, setIsExportExpanded] = useState(false);
+  const [exportFormatCoded, setExportFormatCoded] = useState(false);
+  const [importStatus, setImportStatus] = useState<{ text: string; isError: boolean } | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('pages_screen_mode', screenMode);
-    if (screenMode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (screenMode === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-  }, [screenMode]);
+    setGoogleUser(getStoredGoogleUser());
+  }, [activeTab]);
 
-  useEffect(() => {
-    localStorage.setItem('pages_font_option', selectedFont);
-    if (selectedFont === 'monospace') {
-      document.body.style.fontFamily = 'monospace, ui-monospace, SFMono-Regular';
-    } else if (selectedFont === 'system') {
-      document.body.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    } else {
-      document.body.style.fontFamily = '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  const handleManualSync = async () => {
+    if (!googleUser) return;
+    setIsSyncing(true);
+    try {
+      const { mergedNotes } = await performFullAccountSync(notes, googleUser.email);
+      onImportNotes(mergedNotes);
+      setGoogleUser(getStoredGoogleUser());
+    } finally {
+      setIsSyncing(false);
     }
-  }, [selectedFont]);
+  };
 
   // Sync activeTab === 'folders' to switch left sidebar to folders view
   useEffect(() => {
@@ -329,39 +337,37 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
     }
   };
 
-  const handleExportBackup = () => {
-    const dataStr =
-      'data:text/json;charset=utf-8,' +
-      encodeURIComponent(JSON.stringify(notes, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute(
-      'download',
-      `pages-backup-${new Date().toISOString().slice(0, 10)}.json`
-    );
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+  const handleExportBackup = async () => {
+    await exportNotesToZip(notes, exportFormatCoded);
   };
 
-  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (Array.isArray(parsed)) {
-          onImportNotes(parsed);
-          alert(`Successfully imported ${parsed.length} pages!`);
-        } else {
-          alert('Invalid backup file format.');
-        }
-      } catch (err) {
-        alert('Failed to parse JSON backup file.');
+    setImportStatus(null);
+    try {
+      const { mergedNotes, importedCount } = await importNotesFromFile(file, notes);
+      if (importedCount > 0 || mergedNotes.length > notes.length) {
+        const added = importedCount || (mergedNotes.length - notes.length);
+        onImportNotes(mergedNotes);
+        setImportStatus({
+          text: `Import successful! ${added} page${added === 1 ? '' : 's'} added.`,
+          isError: false,
+        });
+      } else {
+        setImportStatus({
+          text: 'Import completed: All pages in file are already up to date.',
+          isError: false,
+        });
       }
-    };
-    reader.readAsText(file);
+      e.target.value = '';
+    } catch (err) {
+      console.error('Import failed:', err);
+      setImportStatus({
+        text: 'Import failed: Invalid file format or corrupted backup.',
+        isError: true,
+      });
+    }
   };
 
   const handleGoToDefaultPages = () => {
@@ -384,7 +390,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#F9F7F2] text-[#2D2A29] overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#F9F7F2] dark:bg-[#191716] text-[#2D2A29] dark:text-[#F2EFE9] overflow-hidden">
       {/* Header Bar */}
       <Header
         onOpenSection={onOpenSection}
@@ -405,9 +411,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           onDragOver={handleDragOverLeft}
           onDragLeave={handleDragLeaveLeft}
           onDrop={handleDropLeft}
-          className={`w-80 md:w-96 border-r border-[#E8E4D9] flex flex-col bg-[#F1EDE4]/40 h-full relative shrink-0 transition-all duration-300 ${
+          className={`w-80 md:w-96 border-r border-[#E8E4D9] dark:border-[#383432] flex flex-col bg-[#F1EDE4]/40 dark:bg-[#201D1C]/40 h-full relative shrink-0 transition-all duration-300 ${
             dragOverLeft
-              ? 'bg-[#E8E4D9]/80 ring-2 ring-inset ring-[#2D2A29]'
+              ? 'bg-[#E8E4D9]/80 dark:bg-[#383432]/80 ring-2 ring-inset ring-[#2D2A29] dark:ring-[#F2EFE9]'
               : ''
           }`}
         >
@@ -424,19 +430,19 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
               >
             {activeTab === 'settings' ? (
               /* SETTINGS CATEGORY MENU ON LEFT WINDOW */
-              <div className="flex-1 flex flex-col h-full bg-[#F1EDE4]/50 overflow-hidden">
+              <div className="flex-1 flex flex-col h-full bg-[#F1EDE4]/50 dark:bg-[#201D1C]/50 overflow-hidden">
                 <div className="p-4 space-y-2.5 overflow-y-auto">
                   <button
                     type="button"
                     onClick={() => setSettingsCategory('looks')}
                     className={`w-full px-5 py-4 rounded-xl text-sm flex items-center justify-between transition-all cursor-pointer ${
                       settingsCategory === 'looks'
-                        ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                        : 'bg-white/60 text-[#433F3E] hover:bg-white border border-[#E8E4D9]/80 font-medium'
+                        ? 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                        : 'bg-white/60 dark:bg-[#282524]/60 text-[#433F3E] dark:text-[#E6E0D4] hover:bg-white dark:hover:bg-[#282524] border border-[#E8E4D9]/80 dark:border-[#383432]/80 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-3.5">
-                      <Palette className="w-4.5 h-4.5 text-[#2D2A29]" />
+                      <Palette className="w-4.5 h-4.5 text-[#2D2A29] dark:text-[#F2EFE9]" />
                       <span>Looks</span>
                     </div>
                   </button>
@@ -446,12 +452,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                     onClick={() => setSettingsCategory('data')}
                     className={`w-full px-5 py-4 rounded-xl text-sm flex items-center justify-between transition-all cursor-pointer ${
                       settingsCategory === 'data'
-                        ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                        : 'bg-white/60 text-[#433F3E] hover:bg-white border border-[#E8E4D9]/80 font-medium'
+                        ? 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                        : 'bg-white/60 dark:bg-[#282524]/60 text-[#433F3E] dark:text-[#E6E0D4] hover:bg-white dark:hover:bg-[#282524] border border-[#E8E4D9]/80 dark:border-[#383432]/80 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-3.5">
-                      <Database className="w-4.5 h-4.5 text-[#2D2A29]" />
+                      <Database className="w-4.5 h-4.5 text-[#2D2A29] dark:text-[#F2EFE9]" />
                       <span>Data</span>
                     </div>
                   </button>
@@ -461,12 +467,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                     onClick={() => setSettingsCategory('about')}
                     className={`w-full px-5 py-4 rounded-xl text-sm flex items-center justify-between transition-all cursor-pointer ${
                       settingsCategory === 'about'
-                        ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                        : 'bg-white/60 text-[#433F3E] hover:bg-white border border-[#E8E4D9]/80 font-medium'
+                        ? 'bg-white dark:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                        : 'bg-white/60 dark:bg-[#282524]/60 text-[#433F3E] dark:text-[#E6E0D4] hover:bg-white dark:hover:bg-[#282524] border border-[#E8E4D9]/80 dark:border-[#383432]/80 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-3.5">
-                      <Info className="w-4.5 h-4.5 text-[#2D2A29]" />
+                      <Info className="w-4.5 h-4.5 text-[#2D2A29] dark:text-[#F2EFE9]" />
                       <span>About</span>
                     </div>
                   </button>
@@ -475,13 +481,13 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
             ) : isSearching ? (
                 /* SEARCH FOCUS MODE ON LEFT WINDOW: FOLDERS */
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  <div className="h-[57px] px-4 border-b border-[#E8E4D9] flex items-center justify-between bg-white/60 backdrop-blur-xs shrink-0 select-none">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] text-left">Folders</h2>
-                    <span className="text-[11px] font-semibold text-[#8C8679]">({matchingFolders.length})</span>
+                  <div className="h-[57px] px-4 border-b border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between bg-white/60 dark:bg-[#282524]/60 backdrop-blur-xs shrink-0 select-none">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] dark:text-[#F2EFE9] text-left">Folders</h2>
+                    <span className="text-[11px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">({matchingFolders.length})</span>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24">
                     {matchingFolders.length === 0 ? (
-                      <div className="text-center py-10 text-[#8C8679]">
+                      <div className="text-center py-10 text-[#8C8679] dark:text-[#A8A29A]">
                         <p className="text-xs font-semibold">No matching folders</p>
                       </div>
                     ) : (
@@ -496,15 +502,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                             setRightWindowMode('folder-notes');
                             if (activeTab === 'archive' || activeTab === 'dumpster') onCloseTab();
                           }}
-                          className="p-3 bg-white border border-[#E8E4D9] hover:border-[#8C8679]/50 rounded-xl cursor-pointer transition-all flex items-center justify-between shadow-xs hover:shadow-sm"
+                          className="p-3 bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679]/50 rounded-xl cursor-pointer transition-all flex items-center justify-between shadow-xs hover:shadow-sm"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-[#F1EDE4] flex items-center justify-center text-[#2D2A29] shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#F1EDE4] dark:bg-[#332F2D] flex items-center justify-center text-[#2D2A29] dark:text-[#F2EFE9] shrink-0">
                               <FolderIcon className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <h3 className="text-sm font-bold text-[#2D2A29] truncate">{folder.name}</h3>
-                              <p className="text-[11px] text-[#8C8679] truncate">{getFolderNoteCount(folder.id)} pages</p>
+                              <h3 className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9] truncate">{folder.name}</h3>
+                              <p className="text-[11px] text-[#8C8679] dark:text-[#A8A29A] truncate">{getFolderNoteCount(folder.id)} pages</p>
                             </div>
                           </div>
                         </div>
@@ -516,12 +522,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 /* PAGE DIRECTORY VIEW ON LEFT WINDOW */
                 <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 pt-4">
                   {filteredNotes.length === 0 ? (
-                    <div className="text-center py-16 text-[#8C8679]">
-                      <p className="text-sm font-semibold text-[#2D2A29] mb-1">No pages found</p>
+                    <div className="text-center py-16 text-[#8C8679] dark:text-[#A8A29A]">
+                      <p className="text-sm font-semibold text-[#2D2A29] dark:text-[#F2EFE9] mb-1">No pages found</p>
                       <p className="text-xs mb-4">Create your first note to get started.</p>
                       <button
                         onClick={onCreateNewPage}
-                        className="px-4 py-2 bg-[#2D2A29] text-white text-xs font-semibold rounded-xl hover:bg-[#433F3E] transition-colors shadow-sm"
+                        className="px-4 py-2 bg-[#2D2A29] dark:bg-[#F2EFE9] text-white dark:text-[#191716] text-xs font-semibold rounded-xl hover:bg-[#433F3E] dark:hover:bg-[#E6E0D4] transition-colors shadow-sm"
                       >
                         Create Page
                       </button>
@@ -532,10 +538,10 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       {pinnedNotes.length > 0 && (
                         <div>
                           <div className="flex items-center justify-between mb-2.5 px-1">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D2A29]">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D2A29] dark:text-[#F2EFE9]">
                               Pinned
                             </span>
-                            <span className="text-[10px] font-semibold text-[#8C8679]">
+                            <span className="text-[10px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                               {pinnedNotes.length}
                             </span>
                           </div>
@@ -575,10 +581,10 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       {/* Category: Everything */}
                       <div>
                         <div className="flex items-center justify-between mb-2.5 px-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#433F3E]">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4]">
                             Everything
                           </span>
-                          <span className="text-[10px] font-semibold text-[#8C8679]">
+                          <span className="text-[10px] font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                             {unpinnedNotes.length}
                           </span>
                         </div>
@@ -620,16 +626,16 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 /* FOLDER NOTES VIEW IN LEFT WINDOW (When a note inside a folder is selected) */
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                   {/* Header for Folder Notes in Left Sidebar */}
-                  <div className="h-[57px] px-4 border-b border-[#E8E4D9] flex items-center justify-between bg-white/60 backdrop-blur-xs shrink-0 select-none">
-                    <h2 className="text-base font-bold text-[#2D2A29] truncate min-w-0 pr-2">{activeFolderName}</h2>
-                    <span className="text-xs font-semibold text-[#8C8679] shrink-0">({filteredNotes.length})</span>
+                  <div className="h-[57px] px-4 border-b border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between bg-white/60 dark:bg-[#282524]/60 backdrop-blur-xs shrink-0 select-none">
+                    <h2 className="text-base font-bold text-[#2D2A29] dark:text-[#F2EFE9] truncate min-w-0 pr-2">{activeFolderName}</h2>
+                    <span className="text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A] shrink-0">({filteredNotes.length})</span>
                   </div>
 
                   {/* Note Cards List for Selected Folder */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24">
                     {filteredNotes.length === 0 ? (
-                      <div className="text-center py-16 text-[#8C8679] flex flex-col items-center justify-center">
-                        <p className="text-sm font-semibold text-[#2D2A29]">Nothing to view here</p>
+                      <div className="text-center py-16 text-[#8C8679] dark:text-[#A8A29A] flex flex-col items-center justify-center">
+                        <p className="text-sm font-semibold text-[#2D2A29] dark:text-[#F2EFE9]">Nothing to view here</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -725,7 +731,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 animate={{ y: 0, opacity: 1, scale: 1 }}
                 exit={{ y: 20, opacity: 0, scale: 0.88 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-[#2D2A29] text-[#F9F7F2] rounded-full px-3 py-1.5 shadow-xl flex items-center gap-5 border border-[#433F3E] select-none"
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-[#2D2A29] dark:bg-[#242120] text-[#F9F7F2] dark:text-[#F2EFE9] rounded-full px-3 py-1.5 shadow-xl flex items-center gap-5 border border-[#433F3E] dark:border-[#3D3836] select-none"
               >
                 {/* Left: Plus Icon (Create Note or Folder) */}
                 <button
@@ -792,7 +798,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
         </div>
 
         {/* Right Side Window: Renders Note Editor or Folder Notes Grid */}
-        <div className="flex-1 h-full bg-[#F9F7F2] overflow-hidden relative">
+        <div className="flex-1 h-full bg-[#F9F7F2] dark:bg-[#191716] overflow-hidden relative">
           <AnimatePresence mode="wait">
             {(!activeTab || activeTab === 'editor' || activeTab === 'folders') && (
               <motion.div
@@ -805,17 +811,17 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
               >
                 {isSearching ? (
                   /* SEARCH FOCUS MODE ON RIGHT WINDOW: PAGES */
-                  <div className="h-full w-full flex flex-col bg-[#F9F7F2] overflow-y-auto">
-                    <div className="sticky top-0 z-20 h-[57px] px-6 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] flex items-center justify-between text-left select-none">
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] text-left">Pages</h2>
-                      <span className="text-xs font-semibold text-[#8C8679]">{matchingSearchNotes.length} matching</span>
+                  <div className="h-full w-full flex flex-col bg-[#F9F7F2] dark:bg-[#191716] overflow-y-auto">
+                    <div className="sticky top-0 z-20 h-[57px] px-6 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between text-left select-none">
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-[#2D2A29] dark:text-[#F2EFE9] text-left">Pages</h2>
+                      <span className="text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A]">{matchingSearchNotes.length} matching</span>
                     </div>
 
                     <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-4 pb-24">
                       {matchingSearchNotes.length === 0 ? (
-                        <div className="text-center py-20 text-[#8C8679] border-2 border-dashed border-[#E8E4D9] rounded-2xl bg-white/50 p-8 flex flex-col items-center justify-center">
-                          <FileText className="w-10 h-10 text-[#8C8679] mb-2 opacity-60" />
-                          <p className="text-sm font-semibold text-[#2D2A29]">No pages matching "{searchQuery}"</p>
+                        <div className="text-center py-20 text-[#8C8679] dark:text-[#A8A29A] border-2 border-dashed border-[#E8E4D9] dark:border-[#383432] rounded-2xl bg-white/50 dark:bg-[#282524]/50 p-8 flex flex-col items-center justify-center">
+                          <FileText className="w-10 h-10 text-[#8C8679] dark:text-[#A8A29A] mb-2 opacity-60" />
+                          <p className="text-sm font-semibold text-[#2D2A29] dark:text-[#F2EFE9]">No pages matching "{searchQuery}"</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
@@ -939,18 +945,18 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 onDragOver={handleDragOverRight}
                 onDragLeave={handleDragLeaveRight}
                 onDrop={handleDropRight}
-                className={`h-full w-full flex flex-col bg-[#F9F7F2] overflow-y-auto transition-colors relative ${
+                className={`h-full w-full flex flex-col bg-[#F9F7F2] dark:bg-[#191716] overflow-y-auto transition-colors relative ${
                   dragOverRight
-                    ? 'bg-[#E8E4D9]/60 ring-2 ring-dashed ring-[#8C8679]'
+                    ? 'bg-[#E8E4D9]/60 dark:bg-[#383432]/60 ring-2 ring-dashed ring-[#8C8679] dark:ring-[#A8A29A]'
                     : ''
                 }`}
               >
                 {/* Tab Header */}
-                <div className="sticky top-0 z-30 h-[57px] px-6 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] flex items-center justify-between shrink-0">
+                <div className="sticky top-0 z-30 h-[57px] px-6 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold tracking-tight text-[#2D2A29]">Archive</h2>
+                    <h2 className="text-base font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9]">Archive</h2>
                   </div>
-                  <span className="text-xs font-semibold text-[#8C8679]">
+                  <span className="text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                     {archivedNotes.length}
                   </span>
                 </div>
@@ -958,9 +964,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 {/* Tab Body Content */}
                 <div className="flex-1 max-w-3xl w-full mx-auto p-6 space-y-3 pb-28">
                   {archivedNotes.length === 0 ? (
-                    <div className="text-center py-20 text-[#8C8679] border-2 border-dashed border-[#E8E4D9] rounded-2xl bg-white/50 p-8">
-                      <Archive className="w-12 h-12 mx-auto mb-3 text-[#8C8679]" />
-                      <p className="text-base font-bold text-[#2D2A29]">Archive is empty</p>
+                    <div className="text-center py-20 text-[#8C8679] dark:text-[#A8A29A] border-2 border-dashed border-[#E8E4D9] dark:border-[#383432] rounded-2xl bg-white/50 dark:bg-[#282524]/50 p-8">
+                      <Archive className="w-12 h-12 mx-auto mb-3 text-[#8C8679] dark:text-[#A8A29A]" />
+                      <p className="text-base font-bold text-[#2D2A29] dark:text-[#F2EFE9]">Archive is empty</p>
                       <p className="text-xs mt-1">
                         Pages you archive will appear here.
                       </p>
@@ -979,20 +985,20 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                                 setArchiveSelectedIds([...archiveSelectedIds, note.id]);
                               }
                             }}
-                            className={`group relative bg-white border rounded-xl p-4 flex items-center justify-between gap-4 transition-all shadow-sm cursor-pointer ${
+                            className={`group relative bg-white dark:bg-[#282524] border rounded-xl p-4 flex items-center justify-between gap-4 transition-all shadow-sm cursor-pointer ${
                               isSelected
-                                ? 'border-[#2D2A29] bg-[#F1EDE4]'
-                                : 'border-[#E8E4D9] hover:border-[#8C8679]/50'
+                                ? 'border-[#2D2A29] dark:border-[#F2EFE9] bg-[#F1EDE4] dark:bg-[#332F2D]'
+                                : 'border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679]/50'
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-sm font-bold text-[#2D2A29] truncate">
+                              <h4 className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9] line-clamp-3 break-words whitespace-pre-wrap">
                                 {note.title.trim() || 'Untitled Page'}
                               </h4>
-                              <p className="text-xs text-[#8C8679] line-clamp-1 mt-0.5">
+                              <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] line-clamp-1 mt-0.5">
                                 {note.content.trim() || 'Empty content'}
                               </p>
-                              <span className="text-[10px] text-[#8C8679] block mt-1">
+                              <span className="text-[10px] text-[#8C8679] dark:text-[#A8A29A] block mt-1">
                                 Archived {formatTimeAgo(note.updatedAt)}
                               </span>
                             </div>
@@ -1002,8 +1008,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               <div
                                 className={`w-5 h-5 rounded-full border transition-all duration-150 flex items-center justify-center ${
                                   isSelected
-                                    ? 'bg-[#2D2A29] border-[#2D2A29] text-white scale-105'
-                                    : 'border-[#8C8679] bg-white text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29]'
+                                    ? 'bg-[#2D2A29] dark:bg-[#F2EFE9] border-[#2D2A29] dark:border-[#F2EFE9] text-white dark:text-[#191716] scale-105'
+                                    : 'border-[#8C8679] bg-white dark:bg-[#282524] text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29] dark:hover:border-[#F2EFE9]'
                                 }`}
                               >
                                 {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -1127,18 +1133,18 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 onDragOver={handleDragOverRight}
                 onDragLeave={handleDragLeaveRight}
                 onDrop={handleDropRight}
-                className={`h-full w-full flex flex-col bg-[#F9F7F2] overflow-y-auto transition-colors relative ${
+                className={`h-full w-full flex flex-col bg-[#F9F7F2] dark:bg-[#191716] overflow-y-auto transition-colors relative ${
                   dragOverRight
-                    ? 'bg-[#FFE3E3]/50 ring-2 ring-dashed ring-[#D90429]'
+                    ? 'bg-[#FFE3E3]/50 dark:bg-[#5C1D24]/50 ring-2 ring-dashed ring-[#D90429]'
                     : ''
                 }`}
               >
                 {/* Tab Header */}
-                <div className="sticky top-0 z-30 h-[57px] px-6 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] flex items-center justify-between shrink-0">
+                <div className="sticky top-0 z-30 h-[57px] px-6 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold tracking-tight text-[#2D2A29]">Dumpster</h2>
+                    <h2 className="text-base font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9]">Dumpster</h2>
                   </div>
-                  <span className="text-xs font-semibold text-[#8C8679]">
+                  <span className="text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                     {dumpsterNotes.length}
                   </span>
                 </div>
@@ -1146,9 +1152,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 {/* Tab Body Content */}
                 <div className="flex-1 max-w-3xl w-full mx-auto p-6 space-y-3 pb-28">
                   {dumpsterNotes.length === 0 ? (
-                    <div className="text-center py-20 text-[#8C8679] border-2 border-dashed border-[#E8E4D9] rounded-2xl bg-white/50 p-8">
-                      <Trash2 className="w-12 h-12 mx-auto mb-3 text-[#8C8679]" />
-                      <p className="text-base font-bold text-[#2D2A29]">Dumpster is clean</p>
+                    <div className="text-center py-20 text-[#8C8679] dark:text-[#A8A29A] border-2 border-dashed border-[#E8E4D9] dark:border-[#383432] rounded-2xl bg-white/50 dark:bg-[#282524]/50 p-8">
+                      <Trash2 className="w-12 h-12 mx-auto mb-3 text-[#8C8679] dark:text-[#A8A29A]" />
+                      <p className="text-base font-bold text-[#2D2A29] dark:text-[#F2EFE9]">Dumpster is clean</p>
                       <p className="text-xs mt-1">
                         Deleted pages will appear here.
                       </p>
@@ -1167,20 +1173,20 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                                 setDumpsterSelectedIds([...dumpsterSelectedIds, note.id]);
                               }
                             }}
-                            className={`group relative bg-white border rounded-xl p-4 flex items-center justify-between gap-4 transition-all shadow-sm cursor-pointer ${
+                            className={`group relative bg-white dark:bg-[#282524] border rounded-xl p-4 flex items-center justify-between gap-4 transition-all shadow-sm cursor-pointer ${
                               isSelected
-                                ? 'border-[#2D2A29] bg-[#F1EDE4]'
-                                : 'border-[#E8E4D9] hover:border-[#8C8679]/50'
+                                ? 'border-[#2D2A29] dark:border-[#F2EFE9] bg-[#F1EDE4] dark:bg-[#332F2D]'
+                                : 'border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679]/50'
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-sm font-bold text-[#2D2A29] truncate line-through opacity-70">
+                              <h4 className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9] line-clamp-3 break-words whitespace-pre-wrap line-through opacity-70">
                                 {note.title.trim() || 'Untitled Page'}
                               </h4>
-                              <p className="text-xs text-[#8C8679] line-clamp-1 mt-0.5">
+                              <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] line-clamp-1 mt-0.5">
                                 {note.content.trim() || 'Empty content'}
                               </p>
-                              <span className="text-[10px] text-[#8C8679] block mt-1">
+                              <span className="text-[10px] text-[#8C8679] dark:text-[#A8A29A] block mt-1">
                                 Deleted {formatTimeAgo(note.updatedAt)}
                               </span>
                             </div>
@@ -1190,8 +1196,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               <div
                                 className={`w-5 h-5 rounded-full border transition-all duration-150 flex items-center justify-center ${
                                   isSelected
-                                    ? 'bg-[#2D2A29] border-[#2D2A29] text-white scale-105'
-                                    : 'border-[#8C8679] bg-white text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29]'
+                                    ? 'bg-[#2D2A29] dark:bg-[#F2EFE9] border-[#2D2A29] dark:border-[#F2EFE9] text-white dark:text-[#191716] scale-105'
+                                    : 'border-[#8C8679] bg-white dark:bg-[#282524] text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29] dark:hover:border-[#F2EFE9]'
                                 }`}
                               >
                                 {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -1312,10 +1318,10 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15, ease: 'easeInOut' }}
-                className="h-full w-full flex flex-col bg-[#F9F7F2] overflow-y-auto"
+                className="h-full w-full flex flex-col bg-[#F9F7F2] dark:bg-[#191716] overflow-y-auto"
               >
-                <div className="sticky top-0 z-30 h-[57px] px-6 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] flex items-center justify-between shrink-0 select-none">
-                  <h2 className="text-base font-bold tracking-tight text-[#2D2A29] capitalize">
+                <div className="sticky top-0 z-30 h-[57px] px-6 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between shrink-0 select-none">
+                  <h2 className="text-base font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9] capitalize">
                     {settingsCategory}
                   </h2>
                 </div>
@@ -1332,8 +1338,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                     {settingsCategory === 'looks' && (
                       <div className="space-y-6">
                         {/* Screen Mode */}
-                        <div className="bg-white rounded-2xl p-5 border border-[#E8E4D9] shadow-xs space-y-3">
-                          <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] block">
+                        <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs space-y-3">
+                          <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block">
                             Screen Mode
                           </label>
                           <div className="grid grid-cols-3 gap-3">
@@ -1342,8 +1348,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setScreenMode('dark')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 screenMode === 'dark'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Moon className="w-4 h-4" />
@@ -1355,8 +1361,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setScreenMode('light')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 screenMode === 'light'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Sun className="w-4 h-4" />
@@ -1368,8 +1374,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setScreenMode('system')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 screenMode === 'system'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Paintbrush className="w-4 h-4" />
@@ -1379,8 +1385,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                         </div>
 
                         {/* Layout Mode */}
-                        <div className="bg-white rounded-2xl p-5 border border-[#E8E4D9] shadow-xs space-y-3">
-                          <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] block">
+                        <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs space-y-3">
+                          <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block">
                             Layout Mode
                           </label>
                           <div className="grid grid-cols-3 gap-3">
@@ -1389,8 +1395,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setViewMode('mobile')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 viewMode === 'mobile'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Smartphone className="w-4 h-4" />
@@ -1402,8 +1408,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setViewMode('desktop')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 viewMode === 'desktop'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Monitor className="w-4 h-4" />
@@ -1415,8 +1421,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setViewMode('auto')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 viewMode === 'auto'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Paintbrush className="w-4 h-4" />
@@ -1426,8 +1432,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                         </div>
 
                         {/* Font Mode Selection */}
-                        <div className="bg-white rounded-2xl p-5 border border-[#E8E4D9] shadow-xs space-y-3">
-                          <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] block">
+                        <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs space-y-3">
+                          <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block">
                             Font Mode
                           </label>
                           <div className="grid grid-cols-3 gap-3">
@@ -1436,8 +1442,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setSelectedFont('geist')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 selectedFont === 'geist'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <span className="text-base font-bold italic font-serif leading-none h-4 flex items-center justify-center select-none">T</span>
@@ -1449,8 +1455,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setSelectedFont('monospace')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 selectedFont === 'monospace'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <span className="text-base font-bold font-mono leading-none h-4 flex items-center justify-center select-none">T</span>
@@ -1462,13 +1468,45 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setSelectedFont('system')}
                               className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                                 selectedFont === 'system'
-                                  ? 'bg-white text-[#2D2A29] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
-                                  : 'bg-[#F9F7F2] text-[#2D2A29] border-[#E8E4D9] hover:bg-[#F1EDE4]'
+                                  ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                  : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
                               }`}
                             >
                               <Paintbrush className="w-4 h-4" />
                               <span className="text-xs font-bold">System</span>
                             </button>
+                          </div>
+
+                          {/* Apply Font Target Scope */}
+                          <div className="pt-2 border-t border-[#E8E4D9]/60 dark:border-[#383432]/60">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block mb-2.5">
+                              APPLICATION
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setFontScope('all')}
+                                className={`p-3.5 rounded-xl border flex items-center justify-center text-center transition-all cursor-pointer ${
+                                  fontScope === 'all'
+                                    ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                    : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
+                                }`}
+                              >
+                                <span className="text-xs font-bold">PAGES</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setFontScope('editor')}
+                                className={`p-3.5 rounded-xl border flex items-center justify-center text-center transition-all cursor-pointer ${
+                                  fontScope === 'editor'
+                                    ? 'bg-white dark:bg-[#332F2D] text-[#2D2A29] dark:text-[#F2EFE9] border-[#8C8679] ring-2 ring-[#8C8679]/20 shadow-xs font-bold'
+                                    : 'bg-[#F9F7F2] dark:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border-[#E8E4D9] dark:border-[#383432] hover:bg-[#F1EDE4] dark:hover:bg-[#282524]'
+                                }`}
+                              >
+                                <span className="text-xs font-bold">PAGE</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1477,79 +1515,198 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                   {settingsCategory === 'data' && (
                     <div className="space-y-6">
                       {/* Account Sync */}
-                      <div className="bg-white rounded-2xl p-5 border border-[#E8E4D9] shadow-xs space-y-3">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] block">
-                          Account
+                      <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block">
+                          Account Sync
                         </label>
-                        <div className="bg-[#F9F7F2] border border-[#E8E4D9] rounded-xl p-4 flex items-center justify-between opacity-85">
+                        <div className="bg-[#F9F7F2] dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] rounded-xl p-4 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-white border border-[#E8E4D9] flex items-center justify-center font-bold text-sm text-[#2D2A29] shadow-xs">
-                              G
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-[#2D2A29]">
-                                Login to CayLabs account via google
+                            {googleUser?.avatarUrl ? (
+                              <img
+                                src={googleUser.avatarUrl}
+                                alt={googleUser.name}
+                                className="w-9 h-9 rounded-full object-cover border border-[#E8E4D9] dark:border-[#383432]"
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] flex items-center justify-center font-black text-xs text-[#2D2A29] dark:text-[#F2EFE9] shadow-xs">
+                                CL
                               </div>
-                              <span className="text-[11px] text-[#8C8679]">
-                                Sync your notes seamlessly across devices
+                            )}
+                            <div>
+                              <div className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9]">
+                                {googleUser ? googleUser.name : 'CayLabs Account'}
+                              </div>
+                              <span className="text-[11px] text-[#8C8679] dark:text-[#A8A29A] block">
+                                {googleUser ? googleUser.email : 'Sync your notes seamlessly across devices via Google'}
                               </span>
                             </div>
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C8679] bg-[#E8E4D9]/80 px-2.5 py-1 rounded-full">
-                            coming soon
-                          </span>
+
+                          {googleUser ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={handleManualSync}
+                                disabled={isSyncing}
+                                className="px-3 py-1.5 bg-[#F1EDE4] dark:bg-[#332F2D] hover:bg-white dark:hover:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border border-[#E8E4D9] dark:border-[#383432] text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                                <span>{isSyncing ? 'Syncing...' : 'Sync'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStoredGoogleUser(null);
+                                  setGoogleUser(null);
+                                }}
+                                className="p-1.5 text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] rounded-lg transition-colors cursor-pointer"
+                                title="Sign out"
+                              >
+                                <LogOut className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsAuthModalOpen(true)}
+                              className="px-3.5 py-2 bg-[#2D2A29] dark:bg-[#F2EFE9] text-white dark:text-[#2D2A29] text-xs font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+                            >
+                              Login
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      {/* Your Data (Export / Import) */}
-                      <div className="bg-white rounded-2xl p-5 border border-[#E8E4D9] shadow-xs space-y-3">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] block">
-                          Your Data
+                      {/* BACKUP (Export / Import) */}
+                      <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block">
+                          BACKUP
                         </label>
-                        <p className="text-xs text-[#8C8679]">
-                          Export all your pages as JSON backup or import a saved backup file.
+                        <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] leading-relaxed">
+                          Export every pages into .txt zipped file or import a saved backup file.
                         </p>
-                        <div className="flex items-center gap-3 pt-2">
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          {/* Export Button (Expandable) */}
                           <button
                             type="button"
-                            onClick={handleExportBackup}
-                            className="flex-1 py-3 bg-[#F1EDE4] hover:bg-white hover:border-[#8C8679] text-[#2D2A29] border border-[#E8E4D9] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                            onClick={() => setIsExportExpanded((prev) => !prev)}
+                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                              isExportExpanded
+                                ? 'bg-[#F9F7F2] dark:bg-[#332F2D] border-[#8C8679] text-[#2D2A29] dark:text-[#F2EFE9]'
+                                : 'bg-[#F1EDE4] dark:bg-[#332F2D] border-[#E8E4D9] dark:border-[#383432] text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F9F7F2] dark:hover:bg-[#282524]'
+                            }`}
                           >
-                            <Download className="w-4 h-4" />
-                            <span>Export Data</span>
+                            <div className="flex items-center gap-2">
+                              <Download className="w-4 h-4" />
+                              <span>Export</span>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExportExpanded ? 'rotate-180' : ''}`} />
                           </button>
 
-                          <label className="flex-1 py-3 bg-[#F1EDE4] hover:bg-white hover:border-[#8C8679] text-[#2D2A29] border border-[#E8E4D9] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer">
+                          {/* Import Button */}
+                          <label className="py-2.5 px-4 bg-[#F1EDE4] dark:bg-[#332F2D] hover:bg-[#F9F7F2] dark:hover:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border border-[#E8E4D9] dark:border-[#383432] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer">
                             <Upload className="w-4 h-4" />
-                            <span>Import Data</span>
+                            <span>Import</span>
                             <input
                               type="file"
-                              accept=".json"
+                              accept=".txt,.zip,.json"
                               onChange={handleFileImport}
                               className="hidden"
                             />
                           </label>
                         </div>
+
+                        {/* Import Status Feedback Message */}
+                        <AnimatePresence>
+                          {importStatus && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 border ${
+                                importStatus.isError
+                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              }`}
+                            >
+                              {importStatus.isError ? (
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                              ) : (
+                                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                              )}
+                              <span>{importStatus.text}</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Expandable Export Option Panel */}
+                        <AnimatePresence>
+                          {isExportExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="p-4 rounded-2xl bg-[#F9F7F2] dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] space-y-4">
+                                {/* Format Coded Toggle Option */}
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <div className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9]">
+                                      Export with Format Coded
+                                    </div>
+                                    <div className="text-[11px] text-[#8C8679] dark:text-[#A8A29A]">
+                                      Preserve text formatting, sizes & HTML tags in exported .txt files
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExportFormatCoded((prev) => !prev)}
+                                    className={`w-11 h-6 rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                                      exportFormatCoded ? 'bg-[#2D2A29] dark:bg-[#F2EFE9]' : 'bg-[#E8E4D9] dark:bg-[#383432]'
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 rounded-full bg-white dark:bg-[#201D1C] transition-transform ${
+                                        exportFormatCoded ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                {/* Full-width Export trigger button */}
+                                <button
+                                  type="button"
+                                  onClick={handleExportBackup}
+                                  className="w-full py-3 bg-[#2D2A29] dark:bg-[#F2EFE9] text-white dark:text-[#2D2A29] text-xs font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span>Export</span>
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
                   )}
 
                   {settingsCategory === 'about' && (
-                    <div className="bg-white rounded-2xl p-6 border border-[#E8E4D9] shadow-xs flex flex-col justify-between min-h-[280px]">
+                    <div className="bg-white dark:bg-[#282524] rounded-2xl p-6 border border-[#E8E4D9] dark:border-[#383432] shadow-xs flex flex-col justify-between min-h-[280px]">
                       <div className="space-y-3">
-                        <h3 className="text-2xl font-bold tracking-tight text-[#2D2A29]">
+                        <h3 className="text-2xl font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9]">
                           Pages
                         </h3>
-                        <p className="text-sm font-medium text-[#433F3E] leading-relaxed">
+                        <p className="text-sm font-medium text-[#433F3E] dark:text-[#E6E0D4] leading-relaxed">
                           leave this Pages, start writing effectively.
                         </p>
                       </div>
 
-                      <div className="pt-8 border-t border-[#E8E4D9] text-left space-y-1">
-                        <p className="text-xs font-semibold text-[#8C8679]">
+                      <div className="pt-8 border-t border-[#E8E4D9] dark:border-[#383432] text-left space-y-1">
+                        <p className="text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A]">
                           Authorized by CayLabs
                         </p>
-                        <p className="text-[11px] font-bold text-[#8C8679]/80">
+                        <p className="text-[11px] font-bold text-[#8C8679]/80 dark:text-[#A8A29A]/80">
                           v0.7 Beta
                         </p>
                       </div>
@@ -1568,39 +1725,39 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15, ease: 'easeInOut' }}
-                className="h-full w-full flex flex-col bg-[#F9F7F2] overflow-y-auto"
+                className="h-full w-full flex flex-col bg-[#F9F7F2] dark:bg-[#191716] overflow-y-auto"
               >
-                <div className="sticky top-0 z-30 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] px-6 py-4 flex items-center justify-between">
+                <div className="sticky top-0 z-30 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] px-6 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={onCloseTab}
-                      className="p-1.5 text-[#2D2A29] hover:bg-[#F1EDE4] rounded-xl transition-colors flex items-center gap-1.5 font-semibold text-xs border border-[#E8E4D9] bg-white shadow-sm"
+                      className="p-1.5 text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F1EDE4] dark:hover:bg-[#282524] rounded-xl transition-colors flex items-center gap-1.5 font-semibold text-xs border border-[#E8E4D9] dark:border-[#383432] bg-white dark:bg-[#282524] shadow-sm"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Back to Note</span>
                     </button>
-                    <div className="h-4 w-px bg-[#E8E4D9]" />
+                    <div className="h-4 w-px bg-[#E8E4D9] dark:bg-[#383432]" />
                     <div className="flex items-center gap-2">
-                      <LayoutGrid className="w-5 h-5 text-[#8C8679]" />
-                      <h2 className="text-base font-bold tracking-tight">PWA Web App Widgets</h2>
+                      <LayoutGrid className="w-5 h-5 text-[#8C8679] dark:text-[#A8A29A]" />
+                      <h2 className="text-base font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9]">PWA Web App Widgets</h2>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex-1 max-w-3xl w-full mx-auto p-6 space-y-6">
-                  <div className="bg-white rounded-2xl p-6 border border-[#E8E4D9] shadow-sm space-y-3">
-                    <h4 className="text-sm font-bold text-[#2D2A29]">Recent Pages Widget</h4>
-                    <p className="text-xs text-[#8C8679]">Quick preview of your latest active pages</p>
+                  <div className="bg-white dark:bg-[#282524] rounded-2xl p-6 border border-[#E8E4D9] dark:border-[#383432] shadow-sm space-y-3">
+                    <h4 className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9]">Recent Pages Widget</h4>
+                    <p className="text-xs text-[#8C8679] dark:text-[#A8A29A]">Quick preview of your latest active pages</p>
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       {notes.slice(0, 4).map((n) => (
                         <div
                           key={n.id}
-                          className="p-3 bg-[#F9F7F2] border border-[#E8E4D9] rounded-xl text-left"
+                          className="p-3 bg-[#F9F7F2] dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] rounded-xl text-left"
                         >
-                          <h5 className="text-xs font-bold truncate text-[#2D2A29]">
+                          <h5 className="text-xs font-bold truncate text-[#2D2A29] dark:text-[#F2EFE9]">
                             {n.title || 'Untitled'}
                           </h5>
-                          <p className="text-[11px] text-[#8C8679] line-clamp-1 mt-1">
+                          <p className="text-[11px] text-[#8C8679] dark:text-[#A8A29A] line-clamp-1 mt-1">
                             {n.content || 'Empty note'}
                           </p>
                         </div>
@@ -1613,6 +1770,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           </AnimatePresence>
         </div>
       </div>
+      <GoogleAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={async (user) => {
+          setGoogleUser(user);
+          const { mergedNotes } = await performFullAccountSync(notes, user.email);
+          onImportNotes(mergedNotes);
+        }}
+      />
     </div>
   );
 };

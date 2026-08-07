@@ -54,21 +54,21 @@ export const ArchiveModal: React.FC<ArchiveModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.18, ease: 'easeInOut' }}
-        className="fixed inset-0 z-50 bg-[#F9F7F2] text-[#2D2A29] flex flex-col overflow-y-auto"
+        className="fixed inset-0 z-50 bg-[#F9F7F2] dark:bg-[#191716] text-[#2D2A29] dark:text-[#F2EFE9] flex flex-col overflow-y-auto"
       >
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] px-6 h-[57px] flex items-center justify-between">
+        <div className="sticky top-0 z-40 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] px-6 h-[57px] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight text-[#2D2A29]">Archive</h1>
+            <h1 className="text-lg font-bold tracking-tight text-[#2D2A29] dark:text-[#F2EFE9]">Archive</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-[#8C8679]">
+            <span className="text-xs font-semibold text-[#8C8679] dark:text-[#A8A29A]">
               {archivedNotes.length}
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-[#8C8679] hover:text-[#2D2A29] hover:bg-[#E8E4D9]/60 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] hover:bg-[#E8E4D9]/60 dark:hover:bg-[#383432]/60 rounded-lg transition-colors cursor-pointer"
               title="Close Archive"
             >
               <X className="w-5 h-5" />
@@ -79,9 +79,9 @@ export const ArchiveModal: React.FC<ArchiveModalProps> = ({
         {/* Main Content */}
         <div className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-8 space-y-4 pb-28">
           {archivedNotes.length === 0 ? (
-            <div className="text-center py-20 text-[#8C8679]">
-              <Archive className="w-12 h-12 mx-auto mb-3 text-[#8C8679]" />
-              <p className="text-base font-semibold text-[#2D2A29]">Archive is empty</p>
+            <div className="text-center py-20 text-[#8C8679] dark:text-[#A8A29A]">
+              <Archive className="w-12 h-12 mx-auto mb-3 text-[#8C8679] dark:text-[#A8A29A]" />
+              <p className="text-base font-semibold text-[#2D2A29] dark:text-[#F2EFE9]">Archive is empty</p>
               <p className="text-xs mt-1">Pages you archive will appear here.</p>
             </div>
           ) : (
@@ -92,20 +92,20 @@ export const ArchiveModal: React.FC<ArchiveModalProps> = ({
                   <div
                     key={note.id}
                     onClick={() => toggleSelect(note.id)}
-                    className={`group relative bg-white border rounded-xl p-4 flex items-center justify-between gap-4 transition-all shadow-sm cursor-pointer ${
+                    className={`group relative border rounded-xl p-4 flex items-center justify-between gap-4 transition-all shadow-sm cursor-pointer ${
                       isSelected
-                        ? 'border-[#2D2A29] bg-[#F1EDE4]'
-                        : 'border-[#E8E4D9] hover:border-[#8C8679]/50'
+                        ? 'border-[#2D2A29] dark:border-[#F2EFE9] bg-[#F1EDE4] dark:bg-[#282524]'
+                        : 'bg-white dark:bg-[#201D1C] border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679]/50 dark:hover:border-[#A8A29A]/50'
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-[#2D2A29] truncate">
+                      <h4 className="text-sm font-bold text-[#2D2A29] dark:text-[#F2EFE9] line-clamp-3 break-words whitespace-pre-wrap">
                         {note.title.trim() || 'Untitled Page'}
                       </h4>
-                      <p className="text-xs text-[#8C8679] line-clamp-1 mt-0.5">
+                      <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] line-clamp-1 mt-0.5">
                         {note.content.trim() || 'Empty content'}
                       </p>
-                      <span className="text-[10px] text-[#8C8679] block mt-1">
+                      <span className="text-[10px] text-[#8C8679] dark:text-[#A8A29A] block mt-1">
                         Archived {formatTimeAgo(note.updatedAt)}
                       </span>
                     </div>
@@ -115,8 +115,8 @@ export const ArchiveModal: React.FC<ArchiveModalProps> = ({
                       <div
                         className={`w-5 h-5 rounded-full border transition-all duration-150 flex items-center justify-center ${
                           isSelected
-                            ? 'bg-[#2D2A29] border-[#2D2A29] text-white scale-105'
-                            : 'border-[#8C8679] bg-white text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29]'
+                            ? 'bg-[#2D2A29] dark:bg-[#F2EFE9] border-[#2D2A29] dark:border-[#F2EFE9] text-white dark:text-[#191716] scale-105'
+                            : 'border-[#8C8679] bg-white dark:bg-[#201D1C] text-transparent opacity-0 group-hover:opacity-100 hover:border-[#2D2A29] dark:hover:border-[#F2EFE9]'
                         }`}
                       >
                         {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}

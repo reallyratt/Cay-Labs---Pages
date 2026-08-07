@@ -59,12 +59,12 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#F9F7F2] text-[#2D2A29] flex flex-col overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-[#F9F7F2] dark:bg-[#191716] text-[#2D2A29] dark:text-[#F2EFE9] flex flex-col overflow-hidden animate-in fade-in duration-200">
       {/* Top Page Bar */}
-      <div className="sticky top-0 z-40 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#E8E4D9] px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-40 bg-[#F9F7F2]/95 dark:bg-[#191716]/95 backdrop-blur-md border-b border-[#E8E4D9] dark:border-[#383432] px-4 py-3 flex items-center justify-between">
         <button
           onClick={onClose}
-          className="p-2 text-[#2D2A29] hover:bg-[#F1EDE4] rounded-xl transition-colors flex items-center gap-2 font-semibold text-xs border border-[#E8E4D9] bg-white shadow-sm"
+          className="p-2 text-[#2D2A29] dark:text-[#F2EFE9] hover:bg-[#F1EDE4] dark:hover:bg-[#282524] rounded-xl transition-colors flex items-center gap-2 font-semibold text-xs border border-[#E8E4D9] dark:border-[#383432] bg-white dark:bg-[#282524] shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Pages</span>
