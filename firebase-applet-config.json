@@ -3,6 +3,7 @@
   "appId": "1:307714054154:web:9163a3a215d27e6d35a7f3",
   "apiKey": "AIzaSyAidwKFVBzjtZSHJmeJIYo1U-QokRY72gI",
   "authDomain": "grounded-now-knn32.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-pages-1b327c90-5e1b-41e0-8e27-cb2c0622fbfe",
   "storageBucket": "grounded-now-knn32.firebasestorage.app",
   "messagingSenderId": "307714054154",
   "measurementId": "",

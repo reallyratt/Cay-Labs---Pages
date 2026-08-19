@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and credentials",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Unique username"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "SHA-256 hashed password"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Avatar image URL"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in ms"
+        },
+        "lastLoginAt": {
+          "type": "number",
+          "description": "Last login timestamp in ms"
+        }
+      },
+      "required": ["username", "passwordHash"]
+    },
+    "UserNotes": {
+      "title": "UserNotes",
+      "description": "Notes collection belonging to a user",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Username of owner"
+        },
+        "notes": {
+          "type": "array",
+          "description": "Array of note objects"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last sync timestamp in ms"
+        }
+      },
+      "required": ["username"]
+    }
+  },
+  "firestore": {
+    "/users/{username}": {
+      "schema": "User",
+      "description": "User accounts and authentication documents"
+    },
+    "/user_notes/{username}": {
+      "schema": "UserNotes",
+      "description": "User notes, folders, and archives storage document"
+    }
+  }
+}

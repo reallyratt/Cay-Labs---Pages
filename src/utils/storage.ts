@@ -1,4 +1,5 @@
 import { Note, Folder } from '../types';
+import { syncNotesToCloud, getCurrentUser } from './cloudAccountEngine';
 
 const NOTES_KEY = 'pages_notes_v3';
 const FOLDERS_KEY = 'pages_folders_v3';
@@ -118,6 +119,14 @@ export const INITIAL_NOTES: Note[] = [
 
 export function loadNotes(): Note[] {
   try {
+    const user = getCurrentUser();
+    if (user?.username) {
+      const userNotesRaw = localStorage.getItem(`pages_cloud_notes_${user.username}`);
+      if (userNotesRaw) {
+        return JSON.parse(userNotesRaw);
+      }
+    }
+
     const raw = localStorage.getItem(NOTES_KEY);
     if (!raw) {
       saveNotes(INITIAL_NOTES);
@@ -133,14 +142,8 @@ export function loadNotes(): Note[] {
 export function saveNotes(notes: Note[]): void {
   try {
     localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
-    // Auto sync to active account if logged in
-    const rawUser = localStorage.getItem('caylabs_account_current_user');
-    if (rawUser) {
-      const user = JSON.parse(rawUser);
-      if (user?.email) {
-        localStorage.setItem(`caylabs_account_notes_${user.email.toLowerCase()}`, JSON.stringify(notes));
-      }
-    }
+    // Asynchronously sync to Cloud Firestore
+    syncNotesToCloud(notes);
   } catch (err) {
     console.error('Failed to save notes', err);
   }
