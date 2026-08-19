@@ -133,6 +133,14 @@ export function loadNotes(): Note[] {
 export function saveNotes(notes: Note[]): void {
   try {
     localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    // Auto sync to active account if logged in
+    const rawUser = localStorage.getItem('caylabs_account_current_user');
+    if (rawUser) {
+      const user = JSON.parse(rawUser);
+      if (user?.email) {
+        localStorage.setItem(`caylabs_account_notes_${user.email.toLowerCase()}`, JSON.stringify(notes));
+      }
+    }
   } catch (err) {
     console.error('Failed to save notes', err);
   }

@@ -1,56 +1,120 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, AlertCircle, LogIn } from 'lucide-react';
-import { GoogleUser, setStoredGoogleUser } from '../utils/googleSyncEngine';
-import { setStoredAccessToken } from '../utils/googleDriveSync';
-import { triggerGoogleSignIn } from '../utils/firebaseAuth';
+import {
+  X,
+  Plus,
+  Trash2,
+  Mail,
+  AlertCircle,
+  Lock,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
+import {
+  GoogleUser,
+  SavedAccount,
+  getSavedAccountsOnDevice,
+  addSavedAccountOnDevice,
+  removeSavedAccountOnDevice,
+  setStoredGoogleUser,
+  syncNotesWithCloud,
+} from '../utils/googleSyncEngine';
+import { Note } from '../types';
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: GoogleUser) => void;
+  currentNotes?: Note[];
 }
 
 export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  currentNotes = [],
 }) => {
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
+  useEffect(() => {
+    if (isOpen) {
+      setSavedAccounts(getSavedAccountsOnDevice());
+      setErrorMsg(null);
+    }
+  }, [isOpen]);
+
+  const handleSelectAccount = (account: SavedAccount) => {
     setIsAuthenticating(true);
     setErrorMsg(null);
 
-    try {
-      const res = await triggerGoogleSignIn();
+    const user: GoogleUser = {
+      email: account.email,
+      name: account.name,
+      avatarUrl: account.avatarUrl,
+      lastSyncedAt: Date.now(),
+    };
 
-      if (res.accessToken) {
-        setStoredAccessToken(res.accessToken);
-      }
+    setStoredGoogleUser(user);
+    const { mergedNotes } = syncNotesWithCloud(currentNotes, user.email);
+    onLoginSuccess(user);
+    setIsAuthenticating(false);
+    onClose();
+  };
 
-      const user: GoogleUser = {
-        email: res.email,
-        name: res.name,
-        avatarUrl: res.avatarUrl,
-        lastSyncedAt: Date.now(),
-        driveFolderCreated: true,
-      };
-
-      setStoredGoogleUser(user);
-      onLoginSuccess(user);
-      onClose();
-    } catch (err: any) {
-      console.error('Sign in error:', err);
-      if (err?.code === 'auth/popup-closed-by-user') {
-        setErrorMsg('Sign-in popup was closed before completing.');
-      } else {
-        setErrorMsg(err?.message || 'Failed to authenticate with Google.');
-      }
-    } finally {
-      setIsAuthenticating(false);
+  const handleCreateNewAccountLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = emailInput.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
     }
+
+    setIsAuthenticating(true);
+    setErrorMsg(null);
+
+    const displayName =
+      nameInput.trim() ||
+      cleanEmail
+        .split('@')[0]
+        .replace(/[._]/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      displayName
+    )}&background=8C8679&color=fff&bold=true`;
+
+    const newAccount: SavedAccount = {
+      email: cleanEmail,
+      name: displayName,
+      avatarUrl: avatar,
+      lastSyncedAt: Date.now(),
+    };
+
+    addSavedAccountOnDevice(newAccount);
+
+    const user: GoogleUser = {
+      email: cleanEmail,
+      name: displayName,
+      avatarUrl: avatar,
+      lastSyncedAt: Date.now(),
+    };
+
+    setStoredGoogleUser(user);
+    syncNotesWithCloud(currentNotes, user.email);
+    onLoginSuccess(user);
+    setIsAuthenticating(false);
+    onClose();
+  };
+
+  const handleRemoveAccount = (e: React.MouseEvent, email: string) => {
+    e.stopPropagation();
+    removeSavedAccountOnDevice(email);
+    setSavedAccounts(getSavedAccountsOnDevice());
   };
 
   if (!isOpen) return null;
@@ -69,7 +133,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 12 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl relative space-y-6 overflow-hidden"
+          className="bg-white dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl relative space-y-5 overflow-hidden max-h-[90vh] flex flex-col"
         >
           {/* Close button */}
           <button
@@ -80,38 +144,22 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
             <X className="w-5 h-5" />
           </button>
 
-          {/* Google Logo Header */}
-          <div className="space-y-3 text-center">
-            <div className="mx-auto w-12 h-12 rounded-full bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] flex items-center justify-center shadow-xs">
-              <svg className="w-6 h-6" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
+          {/* Header */}
+          <div className="space-y-2 text-center pt-1">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-[#F9F7F2] dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] flex items-center justify-center shadow-xs text-[#2D2A29] dark:text-[#F2EFE9]">
+              <Sparkles className="w-5 h-5 text-[#8C8679] dark:text-[#A8A29A]" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-[#2D2A29] dark:text-[#F2EFE9] tracking-tight">
-                Sign in with Google
+                Account Sync
               </h3>
-              <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] mt-1 leading-relaxed">
-                Choose an account on your device to connect Google Drive with <span className="font-semibold text-[#2D2A29] dark:text-[#F2EFE9]">App.CayLabs</span>
+              <p className="text-xs text-[#8C8679] dark:text-[#A8A29A] mt-0.5">
+                Choose your account to instantly sync notes across devices
               </p>
             </div>
           </div>
 
+          {/* Error Message */}
           {errorMsg && (
             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -119,47 +167,126 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
             </div>
           )}
 
-          {/* Official Google Account Picker Trigger */}
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isAuthenticating}
-              className="w-full py-3.5 px-4 rounded-2xl border border-[#E8E4D9] dark:border-[#383432] bg-white dark:bg-[#282524] hover:bg-[#F9F7F2] dark:hover:bg-[#332F2D] hover:border-[#8C8679] text-[#2D2A29] dark:text-[#F2EFE9] font-bold text-xs transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-50"
-            >
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span>{isAuthenticating ? 'Opening Google Account Chooser...' : 'Select Account on Device'}</span>
-              {!isAuthenticating && <LogIn className="w-4 h-4 text-[#8C8679] ml-auto" />}
-            </button>
+          {/* Content Area */}
+          <div className="overflow-y-auto space-y-4 pr-0.5 custom-scrollbar">
+            {/* Accounts on device */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#8C8679] dark:text-[#A8A29A] px-1">
+                <span>Select Account</span>
+                <span>{savedAccounts.length} saved</span>
+              </div>
 
-            <p className="text-[11px] text-[#8C8679] dark:text-[#A8A29A] text-center">
-              Google will display all accounts saved on your browser or device so you can pick one securely.
-            </p>
+              <div className="space-y-2">
+                {savedAccounts.map((acc) => (
+                  <div
+                    key={acc.email}
+                    onClick={() => handleSelectAccount(acc)}
+                    className="w-full p-3 rounded-2xl border border-[#E8E4D9] dark:border-[#383432] bg-[#F9F7F2] dark:bg-[#282524] hover:bg-white dark:hover:bg-[#332F2D] hover:border-[#8C8679] dark:hover:border-[#8C8679] transition-all flex items-center justify-between cursor-pointer group shadow-2xs text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={acc.avatarUrl}
+                        alt={acc.name}
+                        className="w-10 h-10 rounded-full object-cover border border-[#E8E4D9] dark:border-[#383432] flex-shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9] truncate">
+                          {acc.name}
+                        </div>
+                        <div className="text-[11px] text-[#8C8679] dark:text-[#A8A29A] truncate">
+                          {acc.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0 pl-2">
+                      <span className="text-[11px] font-semibold text-[#8C8679] group-hover:text-[#2D2A29] dark:group-hover:text-[#F2EFE9] transition-colors flex items-center gap-1">
+                        Log in <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                      {savedAccounts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveAccount(e, acc.email)}
+                          className="p-1 text-[#8C8679] hover:text-red-500 rounded-md transition-colors ml-1 cursor-pointer"
+                          title="Remove from device"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Add or switch email */}
+            {!isAddingNew ? (
+              <button
+                type="button"
+                onClick={() => setIsAddingNew(true)}
+                className="w-full py-2.5 px-3 rounded-2xl border border-dashed border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679] bg-transparent hover:bg-[#F9F7F2] dark:hover:bg-[#282524] transition-all flex items-center justify-center gap-2 text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9] cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#8C8679]" />
+                <span>Use another email address</span>
+              </button>
+            ) : (
+              <form
+                onSubmit={handleCreateNewAccountLogin}
+                className="p-4 rounded-2xl border border-[#E8E4D9] dark:border-[#383432] bg-[#F9F7F2] dark:bg-[#282524] space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9]">
+                    Enter your email
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingNew(false)}
+                    className="text-[11px] text-[#8C8679] hover:underline cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-[#8C8679] absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      placeholder="your.name@gmail.com"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      required
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E8E4D9] dark:border-[#383432] bg-white dark:bg-[#1C1A19] text-xs text-[#2D2A29] dark:text-[#F2EFE9] placeholder-[#8C8679] focus:outline-none focus:ring-2 focus:ring-[#8C8679]"
+                    />
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Display Name (optional)"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#E8E4D9] dark:border-[#383432] bg-white dark:bg-[#1C1A19] text-xs text-[#2D2A29] dark:text-[#F2EFE9] placeholder-[#8C8679] focus:outline-none focus:ring-2 focus:ring-[#8C8679]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!emailInput.trim() || isAuthenticating}
+                  className="w-full py-2.5 bg-[#2D2A29] dark:bg-[#F2EFE9] text-white dark:text-[#2D2A29] text-xs font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 cursor-pointer"
+                >
+                  {isAuthenticating ? 'Connecting & Syncing...' : 'Sign In & Sync Notes'}
+                </button>
+              </form>
+            )}
           </div>
 
-          {/* Privacy & terms footer */}
-          <div className="pt-2 border-t border-[#E8E4D9] dark:border-[#383432] text-center space-y-1">
-            <div className="flex items-center justify-center gap-1 text-[10px] text-[#8C8679] dark:text-[#A8A29A]">
-              <Lock className="w-2.5 h-2.5" />
-              <span>Official Google OAuth 2.0 Authentication</span>
-            </div>
+          {/* Footer note */}
+          <div className="pt-2 border-t border-[#E8E4D9] dark:border-[#383432] flex items-center justify-between text-[10px] text-[#8C8679] dark:text-[#A8A29A]">
+            <span className="flex items-center gap-1">
+              <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              Instant Account Persistence
+            </span>
+            <span>Pages by CayLabs</span>
           </div>
         </motion.div>
       </motion.div>

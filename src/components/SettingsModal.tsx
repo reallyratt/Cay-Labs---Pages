@@ -594,6 +594,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <GoogleAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        currentNotes={notes}
         onLoginSuccess={async (user) => {
           setGoogleUser(user);
           const { mergedNotes } = await performFullAccountSync(notes, user.email);
