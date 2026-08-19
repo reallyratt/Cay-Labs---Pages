@@ -1,0 +1,32 @@
+/manifest.json
+  Content-Type: application/manifest+json; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/sw.js
+  Content-Type: application/javascript; charset=utf-8
+  Service-Worker-Allowed: /
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/pwa-192.png
+  Content-Type: image/png
+  Access-Control-Allow-Origin: *
+
+/pwa-512.png
+  Content-Type: image/png
+  Access-Control-Allow-Origin: *
+
+/pwa-512-maskable.png
+  Content-Type: image/png
+  Access-Control-Allow-Origin: *
+
+/favicon.png
+  Content-Type: image/png
+  Access-Control-Allow-Origin: *
+
+/apple-touch-icon.png
+  Content-Type: image/png
+  Access-Control-Allow-Origin: *
+
+/offline.html
+  Content-Type: text/html; charset=utf-8
+  Access-Control-Allow-Origin: *
