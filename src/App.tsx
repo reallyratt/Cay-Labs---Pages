@@ -140,6 +140,28 @@ export default function App() {
         console.warn('Initial background sync notice:', err);
       });
     }
+
+    // Auto-sync whenever device reconnects to internet
+    const handleOnlineSync = () => {
+      const u = getCurrentUser();
+      if (u) {
+        setNotes((current) => {
+          performFullSync(current, u).then((res) => {
+            if (res.success && res.mergedNotes && res.mergedNotes.length > 0) {
+              setNotes(res.mergedNotes);
+            }
+          }).catch((err) => {
+            console.warn('Auto online sync notice:', err);
+          });
+          return current;
+        });
+      }
+    };
+
+    window.addEventListener('online', handleOnlineSync);
+    return () => {
+      window.removeEventListener('online', handleOnlineSync);
+    };
   }, []);
 
   // Screen size auto detect listener
