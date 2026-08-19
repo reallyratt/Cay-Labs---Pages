@@ -9,8 +9,9 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { Note, Folder } from '../types';
 
 // Initialize Firebase App & Firestore
+const FIRESTORE_DB_ID = 'ai-studio-pages-1b327c90-5e1b-41e0-8e27-cb2c0622fbfe';
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-export const db = getFirestore(app);
+export const db = getFirestore(app, FIRESTORE_DB_ID);
 
 export interface AppUser {
   username: string;
