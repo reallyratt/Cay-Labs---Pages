@@ -40,11 +40,11 @@ import { ConfirmationModal } from './ConfirmationModal';
 import { formatTimeAgo } from '../utils/storage';
 import { exportNotesToZip, importNotesFromFile } from '../utils/backupEngine';
 import {
-  GoogleUser,
-  getStoredGoogleUser,
-  setStoredGoogleUser,
-  performFullAccountSync,
-} from '../utils/googleSyncEngine';
+  AppUser,
+  getCurrentUser,
+  setActiveUser,
+  performFullSync,
+} from '../utils/cloudAccountEngine';
 import { GoogleAuthModal } from './GoogleAuthModal';
 import { RefreshCw, LogOut, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -180,25 +180,37 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   // Settings category state
   const [settingsCategory, setSettingsCategory] = useState<'looks' | 'data' | 'about'>('looks');
 
-  // Google Sync & Backup state
-  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(getStoredGoogleUser);
+  // Cloud Sync & Backup state
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(getCurrentUser);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
   const [isExportExpanded, setIsExportExpanded] = useState(false);
   const [exportFormatCoded, setExportFormatCoded] = useState(false);
   const [importStatus, setImportStatus] = useState<{ text: string; isError: boolean } | null>(null);
 
   useEffect(() => {
-    setGoogleUser(getStoredGoogleUser());
+    setCurrentUser(getCurrentUser());
   }, [activeTab]);
 
   const handleManualSync = async () => {
-    if (!googleUser) return;
+    if (!currentUser) return;
     setIsSyncing(true);
+    setSyncStatusText(null);
     try {
-      const { mergedNotes } = await performFullAccountSync(notes, googleUser.email);
-      onImportNotes(mergedNotes);
-      setGoogleUser(getStoredGoogleUser());
+      const res = await performFullSync(notes, currentUser);
+      if (res.mergedNotes && res.mergedNotes.length > 0) {
+        onImportNotes(res.mergedNotes);
+      }
+      if (res.user) {
+        setCurrentUser(res.user);
+      }
+      setSyncStatusText(res.message);
+      setTimeout(() => setSyncStatusText(null), 3500);
+    } catch (err: any) {
+      console.error('Desktop manual sync error:', err);
+      setSyncStatusText('Sync error: ' + (err?.message || 'Check network'));
+      setTimeout(() => setSyncStatusText(null), 3500);
     } finally {
       setIsSyncing(false);
     }
@@ -1517,14 +1529,14 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                       {/* Account Sync */}
                       <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs space-y-3">
                         <label className="text-xs font-bold uppercase tracking-wider text-[#433F3E] dark:text-[#E6E0D4] block">
-                          Account Sync
+                          Cloud Account Sync
                         </label>
                         <div className="bg-[#F9F7F2] dark:bg-[#201D1C] border border-[#E8E4D9] dark:border-[#383432] rounded-xl p-4 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            {googleUser?.avatarUrl ? (
+                            {currentUser?.avatarUrl ? (
                               <img
-                                src={googleUser.avatarUrl}
-                                alt={googleUser.name}
+                                src={currentUser.avatarUrl}
+                                alt={currentUser.displayName}
                                 className="w-9 h-9 rounded-full object-cover border border-[#E8E4D9] dark:border-[#383432]"
                               />
                             ) : (
@@ -1534,15 +1546,22 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                             )}
                             <div>
                               <div className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9]">
-                                {googleUser ? googleUser.name : 'CayLabs Account'}
+                                {currentUser ? currentUser.displayName : 'Pages Cloud Account'}
                               </div>
                               <span className="text-[11px] text-[#8C8679] dark:text-[#A8A29A] block">
-                                {googleUser ? googleUser.email : 'Sync your notes seamlessly across devices via Google'}
+                                {currentUser
+                                  ? `@${currentUser.username} • Cloud Synced`
+                                  : 'Log in to sync your notes across devices'}
                               </span>
+                              {syncStatusText && (
+                                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                                  {syncStatusText}
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          {googleUser ? (
+                          {currentUser ? (
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -1551,13 +1570,13 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                                 className="px-3 py-1.5 bg-[#F1EDE4] dark:bg-[#332F2D] hover:bg-white dark:hover:bg-[#282524] text-[#2D2A29] dark:text-[#F2EFE9] border border-[#E8E4D9] dark:border-[#383432] text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
                               >
                                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                                <span>{isSyncing ? 'Syncing...' : 'Sync'}</span>
+                                <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setStoredGoogleUser(null);
-                                  setGoogleUser(null);
+                                  setActiveUser(null);
+                                  setCurrentUser(null);
                                 }}
                                 className="p-1.5 text-[#8C8679] dark:text-[#A8A29A] hover:text-[#2D2A29] dark:hover:text-[#F2EFE9] rounded-lg transition-colors cursor-pointer"
                                 title="Sign out"
@@ -1571,7 +1590,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                               onClick={() => setIsAuthModalOpen(true)}
                               className="px-3.5 py-2 bg-[#2D2A29] dark:bg-[#F2EFE9] text-white dark:text-[#2D2A29] text-xs font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer shrink-0"
                             >
-                              Login
+                              Log In / Register
                             </button>
                           )}
                         </div>
@@ -1774,9 +1793,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         currentNotes={notes}
-        onLoginSuccess={async (user) => {
-          setGoogleUser(user);
-          const { mergedNotes } = await performFullAccountSync(notes, user.email);
+        onLoginSuccess={(user, mergedNotes) => {
+          setCurrentUser(user);
           onImportNotes(mergedNotes);
         }}
       />

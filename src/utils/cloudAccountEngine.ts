@@ -6,12 +6,15 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { Note, Folder } from '../types';
+import { Note } from '../types';
 
-// Initialize Firebase App & Firestore
-const FIRESTORE_DB_ID = 'ai-studio-pages-1b327c90-5e1b-41e0-8e27-cb2c0622fbfe';
+// Initialize Firebase App & Firestore with configured Database ID
+const databaseId =
+  (firebaseConfig as any).firestoreDatabaseId ||
+  'ai-studio-pages-1b327c90-5e1b-41e0-8e27-cb2c0622fbfe';
+
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-export const db = getFirestore(app, FIRESTORE_DB_ID);
+export const db = getFirestore(app, databaseId);
 
 export interface AppUser {
   username: string;
@@ -24,6 +27,17 @@ export interface AppUser {
 const STORAGE_ACTIVE_USER = 'pages_active_user_session';
 const STORAGE_LOCAL_ACCOUNTS = 'pages_local_accounts_vault';
 const STORAGE_USER_NOTES_PREFIX = 'pages_cloud_notes_';
+const STORAGE_CURRENT_NOTES = 'pages_notes_v3';
+
+/**
+ * Strips undefined values and deep clones data so Firestore never rejects payloads
+ */
+export function cleanForFirestore<T>(data: T): T {
+  if (data === undefined || data === null) return null as any;
+  return JSON.parse(
+    JSON.stringify(data, (_key, value) => (value === undefined ? null : value))
+  );
+}
 
 /**
  * Fast, secure client-side SHA-256 password hashing
@@ -49,7 +63,12 @@ export function sanitizeUsername(username: string): string {
 export function getCurrentUser(): AppUser | null {
   try {
     const raw = localStorage.getItem(STORAGE_ACTIVE_USER);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.username === 'string') {
+      return parsed;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -65,13 +84,13 @@ export function setActiveUser(user: AppUser | null): void {
     } else {
       localStorage.setItem(STORAGE_ACTIVE_USER, JSON.stringify(user));
     }
-  } catch {
-    // handled
+  } catch (err) {
+    console.error('Failed to set active user session:', err);
   }
 }
 
 /**
- * Local accounts vault fallback (ensures offline reliability)
+ * Local accounts vault fallback
  */
 interface VaultAccount {
   username: string;
@@ -136,7 +155,7 @@ export async function createAccount(
       userExistsInCloud = true;
     }
   } catch (err) {
-    console.warn('Cloud check error, checking local vault:', err);
+    console.warn('Cloud check notice, checking local vault:', err);
     const vault = getLocalVault();
     if (vault[username]) {
       userExistsInCloud = true;
@@ -157,31 +176,6 @@ export async function createAccount(
     lastSyncedAt: now,
   };
 
-  // 1. Save to Cloud Firestore
-  try {
-    await setDoc(userDocRef, {
-      username,
-      displayName,
-      passwordHash,
-      avatarUrl,
-      createdAt: now,
-      lastLoginAt: now,
-    });
-
-    const notesDocRef = doc(db, 'user_notes', username);
-    await setDoc(notesDocRef, {
-      username,
-      notes: currentNotes,
-      updatedAt: now,
-    });
-  } catch (cloudErr) {
-    console.warn('Firestore write warning, saving locally:', cloudErr);
-  }
-
-  // 2. Save locally
-  saveToLocalVault(userRecord);
-  localStorage.setItem(`${STORAGE_USER_NOTES_PREFIX}${username}`, JSON.stringify(currentNotes));
-
   const appUser: AppUser = {
     username,
     displayName,
@@ -190,13 +184,45 @@ export async function createAccount(
     lastSyncedAt: now,
   };
 
+  const cleanedNotes = cleanForFirestore(currentNotes);
+
+  // 1. Save to Cloud Firestore
+  try {
+    await setDoc(userDocRef, cleanForFirestore({
+      username,
+      displayName,
+      passwordHash,
+      avatarUrl,
+      createdAt: now,
+      lastLoginAt: now,
+    }));
+
+    const notesDocRef = doc(db, 'user_notes', username);
+    await setDoc(notesDocRef, cleanForFirestore({
+      username,
+      notes: cleanedNotes,
+      updatedAt: now,
+    }));
+  } catch (cloudErr) {
+    console.warn('Firestore write warning:', cloudErr);
+  }
+
+  // 2. Save locally
+  saveToLocalVault(userRecord);
   setActiveUser(appUser);
+  try {
+    localStorage.setItem(STORAGE_CURRENT_NOTES, JSON.stringify(currentNotes));
+    localStorage.setItem(`${STORAGE_USER_NOTES_PREFIX}${username}`, JSON.stringify(currentNotes));
+  } catch {
+    // handled
+  }
+
   return { user: appUser, notes: currentNotes };
 }
 
 /**
- * Logs in with username & password from ANY device (even a brand new phone!).
- * Pulls all your notes down from Cloud Firestore.
+ * Logs in with username & password from ANY device (including a new phone).
+ * Pulls notes down from Cloud Firestore.
  */
 export async function loginAccount(
   rawUsername: string,
@@ -215,9 +241,9 @@ export async function loginAccount(
 
   const inputHash = await hashPassword(rawPassword);
   let cloudUserData: any = null;
-  let cloudNotes: Note[] = [];
+  let remoteNotes: Note[] | null = null;
 
-  // 1. Fetch user from Cloud Firestore
+  // 1. Fetch user profile from Cloud Firestore
   try {
     const userDocRef = doc(db, 'users', username);
     const userSnap = await getDoc(userDocRef);
@@ -226,10 +252,10 @@ export async function loginAccount(
       cloudUserData = userSnap.data();
     }
   } catch (err) {
-    console.warn('Could not fetch from Firestore, checking offline cache:', err);
+    console.warn('Could not fetch from Firestore, checking offline vault:', err);
   }
 
-  // 2. If cloud check didn't succeed, check local vault
+  // Fallback to local vault if offline
   if (!cloudUserData) {
     const localVault = getLocalVault();
     if (localVault[username]) {
@@ -241,70 +267,74 @@ export async function loginAccount(
     throw new Error(`Account "${username}" not found. Please click "Create Account" first.`);
   }
 
-  // 3. Verify password
+  // Verify password hash
   if (cloudUserData.passwordHash !== inputHash) {
     throw new Error('Incorrect password. Please try again.');
   }
 
-  // 4. Fetch user notes from Cloud Firestore
+  // 2. Fetch user notes from Cloud Firestore
   try {
     const notesDocRef = doc(db, 'user_notes', username);
     const notesSnap = await getDoc(notesDocRef);
     if (notesSnap.exists()) {
       const data = notesSnap.data();
       if (Array.isArray(data?.notes)) {
-        cloudNotes = data.notes;
+        remoteNotes = data.notes;
       }
     }
   } catch (err) {
-    console.warn('Could not fetch remote notes:', err);
+    console.warn('Could not fetch remote notes from cloud:', err);
+  }
+
+  // Fallback to local cached notes for this user if available
+  if (remoteNotes === null) {
     try {
       const cached = localStorage.getItem(`${STORAGE_USER_NOTES_PREFIX}${username}`);
-      if (cached) cloudNotes = JSON.parse(cached);
+      if (cached) remoteNotes = JSON.parse(cached);
     } catch {
-      cloudNotes = [];
+      remoteNotes = [];
     }
   }
 
-  // 5. Merge Cloud Notes with any active device notes
-  const noteMap = new Map<string, Note>();
+  let finalNotes: Note[] = [];
 
-  // Add cloud notes first
-  cloudNotes.forEach((n) => noteMap.set(n.id, n));
+  // Check if current device notes are just initial welcome placeholders
+  const isDefaultLocal =
+    currentDeviceNotes.length > 0 &&
+    currentDeviceNotes.every(
+      (n) => n.id === 'n-welcome-guide' || n.id === 'n-feature-showcase'
+    );
 
-  // Merge any new local notes from this device
-  currentDeviceNotes.forEach((localN) => {
-    const remote = noteMap.get(localN.id);
-    if (!remote) {
-      noteMap.set(localN.id, localN);
+  if (remoteNotes && remoteNotes.length > 0) {
+    if (isDefaultLocal || currentDeviceNotes.length === 0) {
+      // Clean switch to user's remote notes
+      finalNotes = remoteNotes;
     } else {
-      const remoteTime = Number(remote.updatedAt) || 0;
-      const localTime = Number(localN.updatedAt) || 0;
-      if (localTime > remoteTime) {
-        noteMap.set(localN.id, localN);
-      }
+      // Merge remote notes with any notes created on this device
+      const noteMap = new Map<string, Note>();
+      remoteNotes.forEach((n) => noteMap.set(n.id, n));
+      currentDeviceNotes.forEach((localN) => {
+        const remote = noteMap.get(localN.id);
+        if (!remote) {
+          noteMap.set(localN.id, localN);
+        } else {
+          const remoteTime = Number(remote.updatedAt) || 0;
+          const localTime = Number(localN.updatedAt) || 0;
+          if (localTime > remoteTime) {
+            noteMap.set(localN.id, localN);
+          }
+        }
+      });
+      finalNotes = Array.from(noteMap.values()).sort(
+        (a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0)
+      );
     }
-  });
-
-  const mergedNotes = Array.from(noteMap.values()).sort(
-    (a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0)
-  );
+  } else {
+    // If no remote notes yet, use current device notes
+    finalNotes = currentDeviceNotes;
+  }
 
   const now = Date.now();
-
-  // Save merged state back to cloud & local
-  try {
-    const notesDocRef = doc(db, 'user_notes', username);
-    await setDoc(notesDocRef, {
-      username,
-      notes: mergedNotes,
-      updatedAt: now,
-    });
-  } catch {
-    // handled
-  }
-
-  localStorage.setItem(`${STORAGE_USER_NOTES_PREFIX}${username}`, JSON.stringify(mergedNotes));
 
   const appUser: AppUser = {
     username: cloudUserData.username || username,
@@ -318,8 +348,128 @@ export async function loginAccount(
     lastSyncedAt: now,
   };
 
+  // Set session and save notes
   setActiveUser(appUser);
-  return { user: appUser, notes: mergedNotes };
+  try {
+    localStorage.setItem(STORAGE_CURRENT_NOTES, JSON.stringify(finalNotes));
+    localStorage.setItem(`${STORAGE_USER_NOTES_PREFIX}${username}`, JSON.stringify(finalNotes));
+  } catch {
+    // handled
+  }
+
+  // Upload combined notes back to cloud in background
+  try {
+    const notesDocRef = doc(db, 'user_notes', username);
+    await setDoc(notesDocRef, cleanForFirestore({
+      username,
+      notes: cleanForFirestore(finalNotes),
+      updatedAt: now,
+    }));
+  } catch (err) {
+    console.warn('Initial cloud save notice:', err);
+  }
+
+  return { user: appUser, notes: finalNotes };
+}
+
+/**
+ * Performs a complete bidirectional sync with Cloud Firestore:
+ * 1. Pulls latest notes from Firestore.
+ * 2. Merges with local device notes.
+ * 3. Writes merged notes back to Firestore and local storage.
+ * 4. Refreshes user session timestamp.
+ */
+export async function performFullSync(
+  currentNotes: Note[],
+  userOverride?: AppUser | null
+): Promise<{ success: boolean; user: AppUser | null; mergedNotes: Note[]; message: string }> {
+  const user = userOverride || getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      user: null,
+      mergedNotes: currentNotes,
+      message: 'Please log in to sync notes.',
+    };
+  }
+
+  let remoteNotes: Note[] | null = null;
+  const now = Date.now();
+
+  // 1. Fetch from Firestore
+  try {
+    const notesDocRef = doc(db, 'user_notes', user.username);
+    const snap = await getDoc(notesDocRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data?.notes)) {
+        remoteNotes = data.notes;
+      }
+    }
+  } catch (err: any) {
+    console.warn('Firestore fetch error during sync:', err);
+  }
+
+  // 2. Merge logic
+  let merged: Note[] = [];
+  if (remoteNotes && remoteNotes.length > 0) {
+    const map = new Map<string, Note>();
+    remoteNotes.forEach((n) => map.set(n.id, n));
+
+    currentNotes.forEach((localN) => {
+      const remote = map.get(localN.id);
+      if (!remote) {
+        map.set(localN.id, localN);
+      } else {
+        const remoteTime = Number(remote.updatedAt) || 0;
+        const localTime = Number(localN.updatedAt) || 0;
+        if (localTime > remoteTime) {
+          map.set(localN.id, localN);
+        }
+      }
+    });
+
+    merged = Array.from(map.values()).sort(
+      (a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0)
+    );
+  } else {
+    merged = currentNotes;
+  }
+
+  // 3. Save to Firestore
+  let cloudSuccess = false;
+  try {
+    const notesDocRef = doc(db, 'user_notes', user.username);
+    await setDoc(notesDocRef, cleanForFirestore({
+      username: user.username,
+      notes: cleanForFirestore(merged),
+      updatedAt: now,
+    }));
+    cloudSuccess = true;
+  } catch (err: any) {
+    console.warn('Firestore write error during sync:', err);
+  }
+
+  // 4. Update local storage & user session
+  const updatedUser: AppUser = {
+    ...user,
+    lastSyncedAt: now,
+  };
+  setActiveUser(updatedUser);
+
+  try {
+    localStorage.setItem(STORAGE_CURRENT_NOTES, JSON.stringify(merged));
+    localStorage.setItem(`${STORAGE_USER_NOTES_PREFIX}${user.username}`, JSON.stringify(merged));
+  } catch {
+    // handled
+  }
+
+  return {
+    success: cloudSuccess,
+    user: updatedUser,
+    mergedNotes: merged,
+    message: cloudSuccess ? 'Synced to Cloud Firestore' : 'Saved locally (Cloud offline)',
+  };
 }
 
 /**
@@ -346,18 +496,18 @@ export async function syncNotesToCloud(
   // 2. Cloud Firestore backup
   try {
     const notesDocRef = doc(db, 'user_notes', user.username);
-    await setDoc(notesDocRef, {
+    await setDoc(notesDocRef, cleanForFirestore({
       username: user.username,
-      notes,
+      notes: cleanForFirestore(notes),
       updatedAt: now,
-    });
+    }));
 
     const updatedUser: AppUser = { ...user, lastSyncedAt: now };
     setActiveUser(updatedUser);
 
     return { success: true, timestamp: now };
   } catch (err) {
-    console.warn('Cloud sync background error:', err);
+    console.warn('Cloud sync background notice:', err);
     return { success: false, timestamp: now };
   }
 }

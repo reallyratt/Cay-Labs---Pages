@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Note, Folder, ViewMode, AppSection } from './types';
 import { loadNotes, saveNotes, loadFolders, saveFolders } from './utils/storage';
+import { getCurrentUser, performFullSync } from './utils/cloudAccountEngine';
 import { usePWA, registerServiceWorker } from './utils/pwa';
 import { MobileView } from './components/MobileView';
 import { DesktopView } from './components/DesktopView';
@@ -126,6 +127,18 @@ export default function App() {
     // Select welcome note by default if available
     if (loadedNotes.length > 0) {
       setSelectedNoteId(loadedNotes[0].id);
+    }
+
+    // If a user is active, trigger background sync from Cloud Firestore
+    const activeUser = getCurrentUser();
+    if (activeUser) {
+      performFullSync(loadedNotes, activeUser).then((res) => {
+        if (res.success && res.mergedNotes && res.mergedNotes.length > 0) {
+          setNotes(res.mergedNotes);
+        }
+      }).catch((err) => {
+        console.warn('Initial background sync notice:', err);
+      });
     }
   }, []);
 

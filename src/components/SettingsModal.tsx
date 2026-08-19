@@ -28,7 +28,7 @@ import {
   AppUser,
   getCurrentUser,
   setActiveUser,
-  syncNotesToCloud,
+  performFullSync,
 } from '../utils/cloudAccountEngine';
 import { GoogleAuthModal } from './GoogleAuthModal';
 
@@ -91,14 +91,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsSyncing(true);
     setSyncStatusText(null);
     try {
-      const res = await syncNotesToCloud(notes, currentUser);
-      if (res.success) {
-        setSyncStatusText('All notes synced to cloud!');
-      } else {
-        setSyncStatusText('Saved locally.');
+      const res = await performFullSync(notes, currentUser);
+      if (res.mergedNotes && res.mergedNotes.length > 0) {
+        onImportNotes(res.mergedNotes);
       }
-      setCurrentUser(getCurrentUser());
-      setTimeout(() => setSyncStatusText(null), 3000);
+      if (res.user) {
+        setCurrentUser(res.user);
+      }
+      setSyncStatusText(res.message);
+      setTimeout(() => setSyncStatusText(null), 3500);
+    } catch (err: any) {
+      console.error('Manual sync error:', err);
+      setSyncStatusText('Sync error: ' + (err?.message || 'Check network'));
+      setTimeout(() => setSyncStatusText(null), 3500);
     } finally {
       setIsSyncing(false);
     }
