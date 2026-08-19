@@ -21,6 +21,7 @@ import {
   ChevronDown,
   CheckCircle2,
   AlertCircle,
+  LayoutTemplate,
 } from 'lucide-react';
 import { ViewMode, PWAState, Note } from '../types';
 import { exportNotesToZip, importNotesFromFile } from '../utils/backupEngine';
@@ -47,6 +48,7 @@ interface SettingsModalProps {
   onTriggerInstall: () => void;
   notes: Note[];
   onImportNotes: (imported: Note[]) => void;
+  onOpenWidgetModal?: () => void;
 }
 
 type CategoryTab = 'looks' | 'data' | 'about';
@@ -66,6 +68,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onTriggerInstall,
   notes,
   onImportNotes,
+  onOpenWidgetModal,
 }) => {
   const [activeTab, setActiveTab] = useState<CategoryTab>('looks');
 
@@ -579,6 +582,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </motion.div>
                       )}
                     </AnimatePresence>
+
+                    {/* 4x2 Mobile Widget Preview */}
+                    {onOpenWidgetModal && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={onOpenWidgetModal}
+                          className="w-full p-3.5 rounded-2xl bg-[#F9F7F2] dark:bg-[#191716] border border-[#E8E4D9] dark:border-[#383432] hover:border-[#8C8679] dark:hover:border-[#A8A29A] flex items-center justify-between transition-all cursor-pointer text-left group shadow-2xs"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] flex items-center justify-center text-[#2D2A29] dark:text-[#F2EFE9] group-hover:scale-105 transition-transform shadow-xs">
+                              <LayoutTemplate className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9]">
+                                4×2 Note Widget
+                              </div>
+                              <div className="text-[11px] text-[#8C8679] dark:text-[#A8A29A]">
+                                Home screen PWA widget for PWABuilder & Android
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-[#282524] border border-[#E8E4D9] dark:border-[#383432] text-[#2D2A29] dark:text-[#F2EFE9] shadow-2xs">
+                            Preview
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

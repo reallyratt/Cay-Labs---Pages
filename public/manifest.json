@@ -1,6 +1,16 @@
 {
+  "id": "/?source=pwa",
   "short_name": "Pages",
   "name": "Pages - Notes & Thought Organisers",
+  "description": "A minimal, elegant dual-view note taking app with offline PWA support, folders, and cloud synchronization.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#F9F7F2",
+  "theme_color": "#2D2A29",
+  "categories": ["productivity", "utilities"],
   "icons": [
     {
       "src": "/pwa-192.png",
@@ -12,31 +22,68 @@
       "src": "/pwa-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512-maskable.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/",
-  "background_color": "#FAF9F6",
-  "theme_color": "#252422",
-  "display": "standalone",
-  "orientation": "any",
-  "description": "A minimal, elegant dual-view note taking app with offline PWA support, folders, and pinned pages.",
-  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "New Note",
+      "short_name": "New Note",
+      "description": "Quickly create a new note",
+      "url": "/?action=new",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Folders",
+      "short_name": "Folders",
+      "description": "Browse note folders",
+      "url": "/?section=folders",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Archive",
+      "short_name": "Archive",
+      "description": "View archived notes",
+      "url": "/?section=archive",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
   "widgets": [
     {
-      "name": "Quick Note",
-      "short_name": "QuickNote",
-      "description": "Quickly create a new note in Pages",
-      "tag": "pages-quick-note",
-      "template": "quick_note_template",
-      "ms_ac_template": "widgets/quick-note.json",
-      "data": "widgets/quick-note-data.json",
+      "name": "Pages Note (4x2)",
+      "short_name": "Pages Note",
+      "description": "Displays your pinned note with quick open and create actions",
+      "tag": "pages-4x2-note-widget",
+      "template": "note_template",
+      "ms_ac_template": "/widgets/note-widget.json",
+      "data": "/widgets/note-widget-data.json",
       "type": "application/json",
       "screenshots": [
         {
-          "src": "/pwa-192.png",
-          "sizes": "192x192",
-          "label": "Pages Quick Note Widget"
+          "src": "/pwa-512.png",
+          "sizes": "512x512",
+          "label": "Pages 4x2 Note Widget"
         }
       ]
     }

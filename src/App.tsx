@@ -11,6 +11,7 @@ import { ArchiveModal } from './components/ArchiveModal';
 import { DumpsterModal } from './components/DumpsterModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { WidgetModal } from './components/WidgetModal';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -20,6 +21,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [isWindowMobile, setIsWindowMobile] = useState<boolean>(false);
+  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
 
   // Screen Mode state
   const [screenMode, setScreenMode] = useState<'light' | 'dark' | 'system'>(() => {
@@ -490,6 +492,7 @@ export default function App() {
             onTriggerInstall={triggerInstall}
             notes={notes}
             onImportNotes={handleImportNotes}
+            onOpenWidgetModal={() => setIsWidgetModalOpen(true)}
           />
         </>
       ) : (
@@ -503,6 +506,7 @@ export default function App() {
           onUpdateNote={handleUpdateNote}
           onOpenSection={(section) => setActiveModal(section)}
           onOpenFolders={() => setActiveModal('folders')}
+          onOpenWidgetModal={() => setIsWidgetModalOpen(true)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           activeFolderId={activeFolderId}
@@ -544,6 +548,16 @@ export default function App() {
           onRequestDeleteSelected={() => setConfirmAction('delete')}
         />
       )}
+
+      {/* 4x2 Home Screen Widget Preview Modal */}
+      <WidgetModal
+        isOpen={isWidgetModalOpen}
+        onClose={() => setIsWidgetModalOpen(false)}
+        notes={notes}
+        folders={folders}
+        onSelectNote={handleSelectNote}
+        onCreateNewPage={handleCreateNewPage}
+      />
 
       {/* Confirmation Modals for Bulk Actions */}
       <ConfirmationModal

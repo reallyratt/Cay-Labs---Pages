@@ -46,7 +46,7 @@ import {
   performFullSync,
 } from '../utils/cloudAccountEngine';
 import { GoogleAuthModal } from './GoogleAuthModal';
-import { RefreshCw, LogOut, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RefreshCw, LogOut, ChevronDown, CheckCircle2, AlertCircle, LayoutTemplate } from 'lucide-react';
 
 interface DesktopViewProps {
   notes: Note[];
@@ -87,6 +87,7 @@ interface DesktopViewProps {
   pwaState: PWAState;
   onTriggerInstall: () => void;
   onImportNotes: (imported: Note[]) => void;
+  onOpenWidgetModal?: () => void;
   isOffline?: boolean;
   // Multi-select props for Notes
   isSelectMode: boolean;
@@ -138,6 +139,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   pwaState,
   onTriggerInstall,
   onImportNotes,
+  onOpenWidgetModal,
   isOffline = false,
   isSelectMode,
   selectedNoteIds,
@@ -1707,6 +1709,32 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                           )}
                         </AnimatePresence>
                       </div>
+
+                      {/* 4x2 Mobile Widget Preview */}
+                      {onOpenWidgetModal && (
+                        <div className="bg-white dark:bg-[#282524] rounded-2xl p-5 border border-[#E8E4D9] dark:border-[#383432] shadow-xs flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-[#F9F7F2] dark:bg-[#1E1C1B] border border-[#E8E4D9] dark:border-[#383432] flex items-center justify-center text-[#2D2A29] dark:text-[#F2EFE9] shadow-xs">
+                              <LayoutTemplate className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-[#2D2A29] dark:text-[#F2EFE9]">
+                                4×2 Home Screen Note Widget
+                              </div>
+                              <div className="text-[11px] text-[#8C8679] dark:text-[#A8A29A]">
+                                Configured for PWABuilder & Android home screen widgets
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onOpenWidgetModal}
+                            className="px-4 py-2 bg-[#F1EDE4] dark:bg-[#332F2D] hover:bg-white dark:hover:bg-[#201D1C] text-[#2D2A29] dark:text-[#F2EFE9] border border-[#E8E4D9] dark:border-[#383432] text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs"
+                          >
+                            Preview Widget
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

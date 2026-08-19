@@ -1,0 +1,80 @@
+{
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "bleed": true,
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "Image",
+                  "url": "${hostUrl}/pwa-192.png",
+                  "size": "Small",
+                  "style": "Rounded"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "verticalContentAlignment": "Center",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${title}",
+                  "weight": "Bolder",
+                  "size": "Medium",
+                  "maxLines": 1,
+                  "wrap": true,
+                  "color": "Default"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${folderName} • ${updatedTime}",
+                  "size": "Small",
+                  "isSubtle": true,
+                  "spacing": "None"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "spacing": "Medium",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${preview}",
+          "wrap": true,
+          "maxLines": 4,
+          "size": "Default",
+          "color": "Default"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open Note",
+      "url": "${noteUrl}",
+      "style": "positive"
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "New Page",
+      "url": "${newNoteUrl}"
+    }
+  ]
+}
