@@ -1,0 +1,41 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF8F5"/>
+      <stop offset="100%" stop-color="#F0ECE1"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded canvas -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect width="508" height="508" x="2" y="2" rx="110" fill="none" stroke="#E5E0D5" stroke-width="4"/>
+
+  <!-- Sheet of Paper with Folded Corner / Minimal Lines -->
+  <g filter="url(#cardShadow)">
+    <rect x="116" y="96" width="280" height="340" rx="24" fill="#FFFFFF" stroke="#E2DDD2" stroke-width="4"/>
+    
+    <!-- Paper horizontal ruled lines -->
+    <line x1="160" y1="180" x2="352" y2="180" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+    <line x1="160" y1="230" x2="352" y2="230" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+    <line x1="160" y1="280" x2="310" y2="280" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+    <line x1="160" y1="330" x2="260" y2="330" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.3"/>
+  </g>
+
+  <!-- Elegant Pen / Fountain Pen Overlay -->
+  <g transform="translate(250, 190) rotate(45)">
+    <!-- Pen Body -->
+    <rect x="-18" y="-120" width="36" height="150" rx="10" fill="#2D2A29" stroke="#1F1D1C" stroke-width="3"/>
+    <!-- Pen Accent Ring -->
+    <rect x="-18" y="-10" width="36" height="12" fill="#D5CEC2"/>
+    <!-- Pen Grip -->
+    <path d="M-14,30 L14,30 L10,65 L-10,65 Z" fill="#3D3A38"/>
+    <!-- Pen Nib -->
+    <path d="M-10,65 L10,65 L0,95 Z" fill="#D5CEC2" stroke="#8C8679" stroke-width="2"/>
+    <!-- Nib Tip / Ink Slit -->
+    <line x1="0" y1="75" x2="0" y2="95" stroke="#2D2A29" stroke-width="2"/>
+    <circle cx="0" cy="75" r="2.5" fill="#2D2A29"/>
+  </g>
+</svg>

@@ -7,12 +7,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="description" content="A minimal, elegant dual-view note taking app with offline PWA support, folders, and cloud synchronization." />
     <meta name="theme-color" content="#2D2A29" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function(reg) { console.log('[PWA] Service Worker registered:', reg.scope); })
+            .catch(function(err) { console.warn('[PWA] SW register notice:', err); });
+        });
+      }
+    </script>
   </head>
   <body class="bg-[#F9F7F2] text-[#2D2A29] antialiased selection:bg-[#8C8679]/20">
     <div id="root"></div>
