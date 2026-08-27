@@ -1,41 +1,88 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Soft warm background rounded square -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FAF8F5"/>
-      <stop offset="100%" stop-color="#F0ECE1"/>
+      <stop offset="100%" stop-color="#EFE9DD"/>
     </linearGradient>
-    <filter id="cardShadow" x="-10%" y="-10%" width="125%" height="125%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.08"/>
+
+    <!-- Paper Sheet Gradient -->
+    <linearGradient id="paperGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F9F8F6"/>
+    </linearGradient>
+
+    <!-- Pencil / Pen Gradients -->
+    <linearGradient id="pencilBody" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="40%" stop-color="#FBBF24"/>
+      <stop offset="70%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <linearGradient id="penWood" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+
+    <linearGradient id="eraserGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="60%" stop-color="#FB7185"/>
+      <stop offset="100%" stop-color="#E11D48"/>
+    </linearGradient>
+
+    <!-- Dropshadows -->
+    <filter id="dropShadow" x="-15%" y="-15%" width="135%" height="135%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#2D2A29" flood-opacity="0.12"/>
+    </filter>
+    <filter id="penShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="-4" dy="10" stdDeviation="8" flood-color="#000000" flood-opacity="0.22"/>
     </filter>
   </defs>
 
-  <!-- Background rounded canvas -->
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
-  <rect width="508" height="508" x="2" y="2" rx="110" fill="none" stroke="#E5E0D5" stroke-width="4"/>
+  <!-- Background App Canvas -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="506" height="506" x="3" y="3" rx="109" fill="none" stroke="#E5E0D5" stroke-width="4"/>
 
-  <!-- Sheet of Paper with Folded Corner / Minimal Lines -->
-  <g filter="url(#cardShadow)">
-    <rect x="116" y="96" width="280" height="340" rx="24" fill="#FFFFFF" stroke="#E2DDD2" stroke-width="4"/>
+  <!-- Sheet of Paper (Memo / Note Emoji) -->
+  <g filter="url(#dropShadow)">
+    <!-- Main Paper Rect -->
+    <path d="M 130 90 L 320 90 L 385 155 L 385 415 C 385 428 375 438 362 438 L 130 438 C 117 438 107 428 107 415 L 107 113 C 107 100 117 90 130 90 Z" 
+          fill="url(#paperGrad)" stroke="#E2DDD2" stroke-width="3"/>
     
-    <!-- Paper horizontal ruled lines -->
-    <line x1="160" y1="180" x2="352" y2="180" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
-    <line x1="160" y1="230" x2="352" y2="230" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
-    <line x1="160" y1="280" x2="310" y2="280" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
-    <line x1="160" y1="330" x2="260" y2="330" stroke="#8C8679" stroke-width="10" stroke-linecap="round" opacity="0.3"/>
+    <!-- Folded Corner -->
+    <path d="M 320 90 L 320 145 C 320 155 330 155 340 155 L 385 155 Z" fill="#EDE8DF" stroke="#DDD7CC" stroke-width="2"/>
+    
+    <!-- Paper Text Lines (Emoji Style) -->
+    <!-- Title Line (Warm Blue / Slate) -->
+    <rect x="145" y="150" width="140" height="16" rx="8" fill="#6366F1" opacity="0.9"/>
+
+    <!-- Body Lines -->
+    <rect x="145" y="195" width="200" height="12" rx="6" fill="#94A3B8" opacity="0.75"/>
+    <rect x="145" y="230" width="200" height="12" rx="6" fill="#94A3B8" opacity="0.75"/>
+    <rect x="145" y="265" width="170" height="12" rx="6" fill="#94A3B8" opacity="0.75"/>
+    <rect x="145" y="300" width="190" height="12" rx="6" fill="#94A3B8" opacity="0.75"/>
+    <rect x="145" y="335" width="130" height="12" rx="6" fill="#94A3B8" opacity="0.6"/>
+    <rect x="145" y="370" width="160" height="12" rx="6" fill="#94A3B8" opacity="0.4"/>
   </g>
 
-  <!-- Elegant Pen / Fountain Pen Overlay -->
-  <g transform="translate(250, 190) rotate(45)">
-    <!-- Pen Body -->
-    <rect x="-18" y="-120" width="36" height="150" rx="10" fill="#2D2A29" stroke="#1F1D1C" stroke-width="3"/>
-    <!-- Pen Accent Ring -->
-    <rect x="-18" y="-10" width="36" height="12" fill="#D5CEC2"/>
-    <!-- Pen Grip -->
-    <path d="M-14,30 L14,30 L10,65 L-10,65 Z" fill="#3D3A38"/>
-    <!-- Pen Nib -->
-    <path d="M-10,65 L10,65 L0,95 Z" fill="#D5CEC2" stroke="#8C8679" stroke-width="2"/>
-    <!-- Nib Tip / Ink Slit -->
-    <line x1="0" y1="75" x2="0" y2="95" stroke="#2D2A29" stroke-width="2"/>
-    <circle cx="0" cy="75" r="2.5" fill="#2D2A29"/>
+  <!-- Pen / Pencil Emote (Diagonal Writing Angle) -->
+  <g transform="translate(340, 270) rotate(-42)" filter="url(#penShadow)">
+    <!-- Eraser Top -->
+    <rect x="-16" y="-140" width="32" height="30" rx="6" fill="url(#eraserGrad)"/>
+    <!-- Metal Ferrule / Band -->
+    <rect x="-17" y="-115" width="34" height="18" rx="2" fill="#CBD5E1" stroke="#94A3B8" stroke-width="1.5"/>
+    <line x1="-17" y1="-106" x2="17" y2="-106" stroke="#64748B" stroke-width="1.5"/>
+
+    <!-- Pencil / Pen Shaft -->
+    <rect x="-16" y="-97" width="32" height="155" fill="url(#pencilBody)"/>
+    <!-- Facet highlights -->
+    <line x1="-5" y1="-97" x2="-5" y2="58" stroke="#FEF08A" stroke-width="3" opacity="0.8"/>
+    <line x1="6" y1="-97" x2="6" y2="58" stroke="#B45309" stroke-width="3" opacity="0.6"/>
+
+    <!-- Sharpened Wooden Tip -->
+    <polygon points="-16,58 16,58 0,102" fill="url(#penWood)"/>
+    <!-- Graphite / Ink Nib -->
+    <polygon points="-6,86 6,86 0,102" fill="#1E293B"/>
   </g>
 </svg>

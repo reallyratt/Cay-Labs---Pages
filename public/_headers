@@ -12,8 +12,8 @@
   Service-Worker-Allowed: /
   Cache-Control: no-cache, no-store, must-revalidate
 
-/favicon.ico
-  Content-Type: image/x-icon
+/pwa-129.png
+  Content-Type: image/png
   Access-Control-Allow-Origin: *
 
 /pwa-192.png

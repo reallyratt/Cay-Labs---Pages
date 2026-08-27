@@ -13,9 +13,15 @@
   "categories": ["productivity", "utilities"],
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/favicon.png",
+      "sizes": "64x64 32x32 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-129.png",
+      "type": "image/png",
+      "sizes": "129x129",
+      "purpose": "any"
     },
     {
       "src": "/pwa-192.png",
